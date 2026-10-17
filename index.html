@@ -354,6 +354,7 @@
                     <div class="panel-title">Arkiva e Klientëve & Faturave</div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
                         <button type="button" class="btn btn-outline btn-xs" id="btn-import-json">Importo JSON</button>
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-import-xl">📋 Importo nga Excel</button>
                         <button type="button" class="btn btn-outline btn-xs" id="btn-export-json" title="Ruaj kopje rezervë">Eksporto JSON</button>
                         <input type="file" id="file-import" accept="application/json,.json" style="display:none;">
                     </div>
@@ -536,6 +537,25 @@
         <h3>Historiku i Klientit</h3>
         <div id="hist-body"></div>
         <div class="modal-actions"><button type="button" class="btn btn-outline" id="hist-close">Mbyll</button><button type="button" class="btn btn-primary" id="hist-renew">Rinovo abonimin</button></div>
+    </div></div>
+
+    <div id="xl-modal" class="modal-back"><div class="modal" style="max-width:760px;">
+        <h3>Importo nga Excel</h3>
+        <div class="hint" style="margin-bottom:8px;">Në Excel selekto të gjitha rreshtat (me titujt), shtyp Ctrl+C dhe ngjiti këtu me Ctrl+V.</div>
+        <textarea id="xl-text" style="min-height:110px;font-family:monospace;font-size:.75rem;" placeholder="Ngjit këtu..."></textarea>
+        <label style="display:flex;gap:6px;align-items:center;margin:8px 0;font-size:.82rem;"><input type="checkbox" id="xl-header" checked style="width:auto;"> Rreshti i parë është titull</label>
+        <button type="button" class="btn btn-outline btn-xs" id="xl-parse">Analizo</button>
+        <div id="xl-map" style="margin-top:12px;"></div>
+        <div id="xl-opts" style="display:none;margin-top:10px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:140px;"><label class="hint">Statusi</label><select id="xl-status"><option value="PAGUAR">PAGUAR</option><option value="PAPAGUAR">PAPAGUAR</option></select></div>
+                <div style="flex:1;min-width:140px;"><label class="hint">Pagesa</label><select id="xl-pay"><option value="">Pa specifikuar</option><option value="Online">Online</option><option value="Cash">Cash</option><option value="Bankë">Bankë</option><option value="Transfertë">Transfertë</option></select></div>
+                <div style="flex:1;min-width:140px;"><label class="hint">Data e lëshimit (nëse mungon)</label><input type="date" id="xl-issue"></div>
+            </div>
+            <label style="display:flex;gap:6px;align-items:center;margin:8px 0;font-size:.82rem;"><input type="checkbox" id="xl-year" checked style="width:auto;"> Data e lëshimit = data e skadimit minus 12 muaj (paketa 1 vjeçare)</label>
+            <div id="xl-prev" class="hint" style="margin-top:10px;white-space:pre-wrap;"></div>
+        </div>
+        <div class="modal-actions"><button type="button" class="btn btn-outline" id="xl-cancel">Anulo</button><button type="button" class="btn btn-primary" id="xl-ok" disabled>Importo</button></div>
     </div></div>
 
     <div id="toast" class="toast"></div>
@@ -1595,6 +1615,92 @@ Ju falënderojmë për besimin!`;
         const r = new FileReader();
         r.onload = () => { try { syncToast(mergeDB(JSON.parse(r.result))); } catch (err) { toast('File i pavlefshëm.', true); } };
         r.readAsText(f);
+    };
+
+    /* ================= IMPORT NGA EXCEL (copy / paste) ================= */
+    const XL_FIELDS = [['', '— mos e përdor —'], ['clientPhone', 'Telefoni'], ['clientName', 'Emri i klientit'], ['clientId', 'MAC / ID'], ['amount', 'Shuma (€)'], ['expiryDate', 'Data e skadimit'], ['issueDate', 'Data e lëshimit'], ['server', 'Serveri (shkon te shënimet)'], ['notes', 'Shënime'], ['packageDetail', 'Paketa'], ['serviceTitle', 'Shërbimi']];
+    let xlRows = [], xlCols = 0;
+    function xlDate(v) {
+        v = String(v || '').trim(); let m;
+        if ((m = v.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/))) return `${m[3]}-${pad(+m[2])}-${pad(+m[1])}`;
+        if ((m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
+        return '';
+    }
+    function xlGuess(head, vals) {
+        const h = String(head || '').toLowerCase(), nonEmpty = vals.filter(x => x);
+        const numeric = nonEmpty.length && nonEmpty.every(x => /^\d+([.,]\d+)?$/.test(x.replace(/\s*€\s*/, '')));
+        const dates = nonEmpty.length && nonEmpty.filter(x => xlDate(x)).length > nonEmpty.length * 0.8;
+        if (/skad|expir/.test(h) || (dates && !/leshim|issue/.test(h))) return 'expiryDate';
+        if (/leshim|issue/.test(h)) return 'issueDate';
+        if (/server/.test(h)) return '';
+        if (/shum|cmim|çmim|amount|price/.test(h) || (/shenim|note/.test(h) && numeric)) return 'amount';
+        if (/shenim|note/.test(h)) return 'notes';
+        if (/emr|name|klient/.test(h)) return 'clientName';
+        if (/tel|phone|numr|nr\b/.test(h)) return 'clientPhone';
+        if (/mac|^id$|device/.test(h)) return 'clientId';
+        if (/pak/.test(h)) return 'packageDetail';
+        return '';
+    }
+    function xlParse() {
+        const raw = $('xl-text').value.replace(/\r/g, '').split('\n').filter(l => l.trim());
+        if (!raw.length) return toast('Ngjit fillimisht të dhënat.', true);
+        const sep = raw[0].includes('\t') ? '\t' : (raw[0].includes(';') ? ';' : ',');
+        let rows = raw.map(l => l.split(sep).map(c => c.trim().replace(/^"|"$/g, '')));
+        xlCols = Math.max(...rows.map(r => r.length));
+        // Nëse rreshti i parë përmban datë, nuk është titull: e trajtojmë si të dhënë
+        $('xl-header').checked = !rows[0].some(c => xlDate(c));
+        const head = $('xl-header').checked ? rows.shift() : [];
+        xlRows = rows;
+        let html = '<div class="hint" style="margin-bottom:6px;">Zgjidh çfarë përfaqëson çdo kolonë (' + xlRows.length + ' rreshta):</div>';
+        for (let c = 0; c < xlCols; c++) {
+            const vals = xlRows.map(r => r[c] || ''), g = xlGuess(head[c], vals);
+            html += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;"><div style="flex:1;font-size:.78rem;"><b>${escapeSafe(head[c] || 'Kolona ' + (c + 1))}</b><br><span class="hint" style="margin:0;">${escapeSafe(vals.slice(0, 3).join(' · '))}</span></div>` +
+                `<select class="xl-sel" data-c="${c}" style="flex:1;">${XL_FIELDS.map(f => `<option value="${f[0]}"${f[0] === g ? ' selected' : ''}>${f[1]}</option>`).join('')}</select></div>`;
+        }
+        $('xl-map').innerHTML = html; $('xl-opts').style.display = ''; if (!$('xl-issue').value) $('xl-issue').value = getTodayISO();
+        document.querySelectorAll('.xl-sel').forEach(e => e.onchange = xlPreview); xlPreview();
+    }
+    function xlBuild() {
+        const map = {}; document.querySelectorAll('.xl-sel').forEach(e => { if (e.value) map[+e.dataset.c] = e.value; });
+        const out = [], now = new Date().toISOString(), uids = {};
+        const used = new Set(getInvoices().map(i => i.invoiceNumber));
+        const year = new Date().getFullYear();
+        const newNo = () => { let n; do { n = `${year}-${Math.floor(100000 + Math.random() * 900000)}`; } while (used.has(n)); used.add(n); return n; };
+        xlRows.forEach(r => {
+            const o = {}; Object.keys(map).forEach(c => { const f = map[c], v = (r[c] || '').trim(); if (v) o[f] = o[f] ? o[f] + ' ' + v : v; });
+            if (!o.clientPhone && !o.clientName) return;
+            let phone = o.clientPhone || '', phoneNote = '';
+            const pm = phone.match(/^(.*?)\s*\((.*)\)\s*$/); if (pm) { phone = pm[1].trim(); phoneNote = pm[2].trim(); }
+            const pk = phoneKey(phone) || ('n:' + (o.clientName || ''));
+            if (!uids[pk]) uids[pk] = resolveClientUid(phone);
+            const notes = [o.notes, phoneNote, o.server ? 'Serveri: ' + o.server : ''].filter(Boolean).join('\n');
+            const amt = parseFloat(String(o.amount || '').replace(',', '.'));
+            out.push({
+                invoiceNumber: newNo(), providerName: providerNameEl.value.trim(), providerContact: providerContactEl.value.trim(),
+                clientName: o.clientName || '', clientPhone: phone, idType: o.clientId ? 'mac' : '', clientId: o.clientId || '', deviceKey: '', xtUser: '', xtPass: '', xtLine: '',
+                serviceTitle: o.serviceTitle || serviceTitleEl.value.trim(), packageDetail: o.packageDetail || packageDetailEl.value.trim(),
+                issueDate: xlDate(o.issueDate) || ($('xl-year').checked && xlDate(o.expiryDate) ? addMonthsISO(xlDate(o.expiryDate), -12) : ($('xl-issue').value || getTodayISO())), expiryDate: xlDate(o.expiryDate),
+                amount: (isNaN(amt) ? 0 : amt).toFixed(2), status: $('xl-status').value, paymentMethod: $('xl-pay').value,
+                notes, clientUid: uids[pk], updatedAt: now
+            });
+        });
+        return out;
+    }
+    function xlPreview() {
+        const list = xlBuild();
+        $('xl-prev').textContent = `Do të krijohen ${list.length} fatura.\n` + list.slice(0, 3).map(i => `${i.clientPhone} ${i.clientName} | ${i.amount}€ | skadon ${i.expiryDate ? formatDateSq(i.expiryDate) : '?'} | ${i.notes.replace(/\n/g, ', ')}`).join('\n');
+        $('xl-ok').disabled = !list.length;
+    }
+    $('btn-import-xl').onclick = () => { $('xl-text').value = ''; $('xl-map').innerHTML = ''; $('xl-opts').style.display = 'none'; $('xl-ok').disabled = true; $('xl-modal').classList.add('show'); };
+    $('xl-cancel').onclick = () => $('xl-modal').classList.remove('show');
+    $('xl-parse').onclick = xlParse;
+    $('xl-ok').onclick = () => {
+        const list = xlBuild(), cur = getInvoices();
+        const seen = new Set(cur.map(i => phoneKey(i.clientPhone) + '|' + i.expiryDate + '|' + i.amount));
+        const fresh = list.filter(i => !seen.has(phoneKey(i.clientPhone) + '|' + i.expiryDate + '|' + i.amount));
+        saveInvoices([...fresh, ...cur]); renderArchiveAndStats();
+        $('xl-modal').classList.remove('show');
+        toast(`U importuan ${fresh.length} fatura${list.length - fresh.length ? ' (' + (list.length - fresh.length) + ' dublikata u anashkaluan)' : ''}.`);
     };
 
     /* ================= SINKRONIZIM AUTOMATIK ME DROPBOX (API) ================= */
