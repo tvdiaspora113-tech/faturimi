@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistemi i Faturimit Pro — Menaxhimi i Abonimeve</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-app: #0f172a; --bg-panel: #1e293b; --bg-input: #0f172a; --border-panel: #334155;
+            --text-primary: #f8fafc; --text-secondary: #94a3b8; --accent: #3b82f6; --accent-hover: #2563eb;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background-color: var(--bg-app); color: var(--text-primary); min-height: 100vh; padding: 20px; }
+
+        .top-bar { max-width: 1440px; margin: 0 auto 20px auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; background: var(--bg-panel); border: 1px solid var(--border-panel); padding: 16px 24px; border-radius: 12px; }
+        .app-brand { display: flex; align-items: center; gap: 12px; }
+        .app-logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,.35); }
+        .app-brand h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.3px; }
+        .app-brand p { font-size: 0.78rem; color: var(--text-secondary); }
+        .stats-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+        .stat-pill { background: var(--bg-input); border: 1px solid var(--border-panel); padding: 8px 16px; border-radius: 8px; display: flex; flex-direction: column; min-width: 135px; }
+        .stat-pill span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); font-weight: 600; }
+        .stat-pill strong { font-size: 1.05rem; font-weight: 800; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+        .stat-paid strong { color: var(--success); }
+        .stat-unpaid strong { color: var(--danger); }
+        .stat-expiring strong { color: var(--warning); }
+
+        .workspace { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: 460px minmax(0, 1fr); gap: 24px; align-items: start; }
+        @media (max-width: 1080px) { .workspace { grid-template-columns: minmax(0, 1fr); } }
+
+        .panel { background: var(--bg-panel); border: 1px solid var(--border-panel); border-radius: 12px; padding: 22px; margin-bottom: 20px; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-panel); gap: 10px; flex-wrap: wrap; }
+        .panel-title { font-size: 0.98rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .inv-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; background: rgba(59,130,246,.15); color: #60a5fa; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(59,130,246,.3); }
+
+        .form-section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .8px; color: #60a5fa; font-weight: 700; margin: 14px 0 8px 0; }
+        .form-group { margin-bottom: 12px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        @media (max-width: 520px) { .form-row, .form-row-3 { grid-template-columns: 1fr; } }
+        label { display: block; font-size: 0.78rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px; }
+        input, select, textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border-panel); color: var(--text-primary); padding: 9px 11px; border-radius: 7px; font-size: 0.88rem; transition: border-color .15s, box-shadow .15s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
+        textarea { resize: vertical; min-height: 55px; }
+
+        .preset-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+        .preset-btn { background: var(--bg-input); border: 1px solid var(--border-panel); color: #cbd5e1; padding: 7px 6px; border-radius: 6px; font-size: 0.76rem; font-weight: 600; cursor: pointer; text-align: center; transition: all .15s; }
+        .preset-btn:hover { border-color: var(--accent); color: #fff; background: rgba(59,130,246,.12); }
+        .preset-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+        .idsel-wrap { position: relative; }
+        .idsel-menu { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 50; background: var(--bg-panel); border: 1px solid var(--border-panel); border-radius: 8px; padding: 5px; box-shadow: 0 10px 24px rgba(0,0,0,.45); gap: 5px; grid-template-columns: 1fr 1fr; }
+        .idsel-menu.show { display: grid; }
+        .idsel-menu button { background: var(--bg-input); border: 1px solid var(--border-panel); color: #cbd5e1; padding: 8px 6px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .idsel-menu button:hover { border-color: var(--accent); color: #fff; background: rgba(59,130,246,.12); }
+        .idsel-menu button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .idsel-badge { display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); border-radius: 5px; padding: 3px 8px; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+        .idsel-badge.show { display: block; }
+        .xtream-box { display: none; background: rgba(59,130,246,.06); border: 1px solid var(--border-panel); border-radius: 8px; padding: 10px 10px 0 10px; }
+        .xtream-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .8px; color: #60a5fa; font-weight: 700; }
+
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+        .btn { cursor: pointer; font-size: 0.86rem; font-weight: 600; padding: 11px 14px; border-radius: 8px; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all .15s; color: inherit; }
+        .btn:disabled { opacity: .6; cursor: wait; }
+        .btn-primary { background: var(--accent); color: #fff; grid-column: span 2; font-size: 0.92rem; box-shadow: 0 4px 12px rgba(59,130,246,.25); }
+        .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+        .btn-whatsapp { background: rgba(37,211,102,.15); color: #4ade80; border-color: rgba(37,211,102,.35); }
+        .btn-whatsapp:hover { background: rgba(37,211,102,.25); }
+        .btn-outline { background: transparent; color: #cbd5e1; border-color: var(--border-panel); }
+        .btn-outline:hover { background: rgba(255,255,255,.05); color: #fff; }
+        .btn-xs { padding: 5px 9px; font-size: 0.74rem; border-radius: 5px; }
+        .btn-solid-xs { background: var(--accent); color: #fff; }
+        .btn-green-xs { background: rgba(16,185,129,.18); color: #34d399; border-color: rgba(16,185,129,.4); }
+        .btn-amber-xs { background: rgba(245,158,11,.15); color: #fbbf24; border-color: rgba(245,158,11,.4); }
+
+        .alert-error { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; padding: 9px 12px; border-radius: 7px; font-size: 0.8rem; font-weight: 600; margin-bottom: 12px; display: none; }
+        .toast { position: fixed; bottom: 22px; right: 22px; background: #10b981; color: #052e1f; padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: .85rem; z-index: 9999; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+
+        /* ===== FATURA ===== */
+        .preview-stage { background: #090d16; border: 1px solid var(--border-panel); border-radius: 10px; padding: 28px; display: flex; justify-content: center; overflow-x: auto; }
+        @media (max-width: 600px) { .preview-stage { padding: 10px; } }
+
+        #invoice-sheet, .invoice-sheet-render { background: #ffffff; color: #000000; width: 100%; max-width: 740px; min-width: 560px; padding: 38px 42px; border-radius: 2px; box-shadow: 0 12px 32px rgba(0,0,0,.45); position: relative; }
+        #invoice-sheet *, .invoice-sheet-render * { font-family: 'Inter', Arial, sans-serif; }
+        .pdf-top-bar { height: 6px; background: #d62828; margin-bottom: 24px; }
+        .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 2px solid #000; margin-bottom: 22px; gap: 12px; }
+        .pdf-brand-name { font-size: 1.55rem; font-weight: 800; letter-spacing: -.5px; color: #000; text-transform: uppercase; }
+        .pdf-brand-sub { font-size: 0.82rem; color: #3f3f46; margin-top: 3px; font-weight: 500; }
+        .pdf-doc-type { text-align: right; }
+        .pdf-doc-title { font-size: 1.9rem; font-weight: 900; letter-spacing: 1.5px; line-height: 1; color: #000; }
+        .pdf-doc-no { font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; font-weight: 700; margin-top: 6px; background: #f4f4f5; color: #000000; padding: 3px 8px; border: 1px solid #000; display: inline-block; }
+        .pdf-parties { display: grid; grid-template-columns: 1.15fr .85fr; gap: 20px; margin-bottom: 22px; }
+        .pdf-box { border: 1.5px solid #000; padding: 12px 15px; color: #000; }
+        .pdf-box-label { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #000; border-bottom: 1px solid #d4d4d8; padding-bottom: 4px; margin-bottom: 8px; }
+        .pdf-client-name { font-size: 1.08rem; font-weight: 800; color: #000; margin-bottom: 4px; word-break: break-word; }
+        .pdf-meta-line { font-size: 0.83rem; color: #18181b; margin-bottom: 3px; display: flex; justify-content: space-between; gap: 8px; }
+        .pdf-meta-line span { color: #71717a; font-size: 0.76rem; font-weight: 500; }
+        .pdf-meta-line strong { font-weight: 700; color: #000; text-align: right; word-break: break-word; }
+        .pdf-login-box { background: #f4f4f5; border: 1px solid #d4d4d8; padding: 9px 15px 7px; margin: -6px 0 22px; color: #000; }
+        .pdf-login-label { font-size: 0.64rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #52525b; margin-bottom: 5px; }
+        .pdf-login-row { display: flex; gap: 10px; align-items: baseline; margin-bottom: 3px; }
+        .pdf-login-row span { flex: 0 0 86px; font-size: 0.74rem; color: #71717a; font-weight: 500; }
+        .pdf-login-row strong { flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; font-weight: 700; color: #000; word-break: break-all; }
+        .pdf-expiry-note { font-size: 0.76rem; color: #52525b; font-weight: 600; margin-top: 2px; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; color: #000; }
+        .pdf-table th { background: #000; color: #fff; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; padding: 9px 12px; text-align: left; border: 1.5px solid #000; }
+        .pdf-table td { padding: 13px 12px; border: 1.5px solid #000; font-size: 0.88rem; vertical-align: top; color: #000000; }
+        .pdf-table .col-right { text-align: right; }
+        .pdf-table td.col-right { font-family: 'JetBrains Mono', monospace; color: #000000; }
+        .pdf-service-main { font-weight: 800; font-size: 0.94rem; color: #000; margin-bottom: 3px; }
+        .pdf-service-sub { font-size: 0.78rem; color: #3f3f46; }
+        .pdf-summary-grid { display: grid; grid-template-columns: 1fr 270px; gap: 20px; align-items: start; margin-bottom: 22px; }
+        .pdf-left-bottom { display: flex; gap: 14px; align-items: flex-start; }
+        .pdf-qr-box { border: 1.5px solid #000; padding: 6px; background: #fff; color: #000; display: flex; flex-direction: column; align-items: center; }
+        .pdf-qr-box img, .pdf-qr-box canvas { display: block; }
+        .pdf-qr-caption { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; margin-top: 4px; letter-spacing: .5px; color: #000; }
+        .pdf-notes-stamp-col { flex: 1; }
+        .pdf-stamp-badge { display: inline-block; padding: 6px 14px; font-size: 0.95rem; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; border: 2.5px solid #000; margin-bottom: 8px; }
+        .stamp-paid { background: #000; color: #fff; }
+        .stamp-unpaid { background: #dc2626; color: #fff; border-color: #dc2626; }
+        #status.unpaid-sel { background: rgba(220,38,38,.2); border-color: #dc2626; color: #fca5a5; font-weight: 700; }
+        .pdf-notes-box { border: 1px dashed #000; padding: 8px 10px; font-size: 0.78rem; background: #fafafa; color: #18181b; white-space: pre-wrap; word-break: break-word; }
+        .pdf-totals-table { width: 100%; border-collapse: collapse; border: 2px solid #000; color: #000; }
+        .pdf-totals-table td { padding: 11px 14px; font-size: 0.88rem; border-bottom: 1px solid #d4d4d8; color: #000000; }
+        .pdf-totals-table tr.final-row td { background: #000; color: #fff; font-weight: 800; font-size: 1.05rem; border-bottom: none; padding: 15px 14px; }
+        .pdf-totals-table tr.final-row td.amt { font-size: 1.3rem; }
+        .pdf-totals-table .amt { text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+        #invoice-sheet, .invoice-sheet-render { overflow: hidden; }
+        .pdf-watermark { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%) rotate(-24deg); font-size: 6.2rem; font-weight: 900; letter-spacing: 6px; white-space: nowrap; pointer-events: none; z-index: 0; color: rgba(0,0,0,.045); }
+        .pdf-watermark.wm-unpaid { color: rgba(214,40,40,.07); }
+        .pdf-contact-line { text-align: center; font-size: 0.74rem; color: #52525b; font-weight: 600; margin-top: 8px; }
+        .pdf-footer { border-top: 1.5px solid #000; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; font-weight: 600; color: #27272a; gap: 10px; }
+
+        /* Arkiva */
+        .archive-controls { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .archive-controls input { flex: 1; min-width: 180px; }
+        .archive-controls select { width: 150px; }
+        .archive-list { max-height: 360px; overflow-y: auto; border: 1px solid var(--border-panel); border-radius: 8px; }
+        .archive-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border-panel); background: var(--bg-input); font-size: 0.83rem; gap: 10px; flex-wrap: wrap; }
+        .archive-item:last-child { border-bottom: none; }
+        .archive-item:hover { background: rgba(255,255,255,.03); }
+        .archive-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+        .tag-status { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; margin-left: 6px; }
+        .tag-paid { background: rgba(16,185,129,.2); color: #34d399; }
+        .tag-unpaid { background: rgba(239,68,68,.2); color: #f87171; }
+        .tag-exp { background: rgba(245,158,11,.2); color: #fbbf24; }
+    
+        /* ===== Shtesa v4 ===== */
+        body { padding-top: 42px; }
+        .save-ind { position: fixed; top: 10px; right: 14px; z-index: 9000; font-size: .74rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--bg-panel); border: 1px solid var(--border-panel); color: var(--text-secondary); }
+        .save-ind.ok { color: #34d399; border-color: rgba(16,185,129,.4); }
+        .save-ind.err { color: #f87171; border-color: rgba(239,68,68,.5); }
+        .modal-back { position: fixed; inset: 0; background: rgba(2,6,23,.82); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 16px; }
+        .modal-back.show { display: flex; }
+        .modal { background: var(--bg-panel); border: 1px solid var(--border-panel); border-radius: 12px; padding: 22px; width: 100%; max-width: 560px; max-height: 90vh; overflow: auto; }
+        .modal h3 { font-size: 1.05rem; margin-bottom: 10px; }
+        .modal p { font-size: .86rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
+        .radio-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-panel); border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: .9rem; font-weight: 600; }
+        .radio-row input { width: auto; }
+        .radio-row b { margin-left: auto; font-family: 'JetBrains Mono', monospace; }
+        .preset-btn.custom { border-style: dashed; color: var(--text-secondary); }
+        .preset-btn.custom:hover { background: transparent; }
+        .file-row { display: flex; gap: 6px; }
+        .file-row input { padding: 6px; }
+        .client-info { display: none; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: #6ee7b7; font-size: .78rem; font-weight: 600; padding: 8px 10px; border-radius: 7px; margin-bottom: 12px; }
+        .hist-table { width: 100%; border-collapse: collapse; font-size: .8rem; margin-top: 10px; }
+        .hist-table th, .hist-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-panel); text-align: left; }
+        .hist-sum { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+        .hist-sum div { flex: 1; min-width: 120px; background: var(--bg-input); border: 1px solid var(--border-panel); border-radius: 8px; padding: 8px 12px; font-size: .72rem; color: var(--text-secondary); }
+        .hist-sum strong { display: block; font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+        .backup-box { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--border-panel); }
+        .backup-box .hint { font-size: .74rem; color: var(--text-secondary); margin-top: 8px; }
+        .pdf-brand { display: flex; align-items: center; gap: 14px; }
+        .pdf-logo { width: 80px; height: 80px; object-fit: contain; }
+        .pdf-sign { margin-top: 14px; text-align: center; color: #000; }
+        .pdf-sign img { max-width: 120px; max-height: 76px; object-fit: contain; }
+        .pdf-sign-line { border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; font-size: .8rem; font-weight: 800; }
+        .pdf-sign-role { font-size: .72rem; color: #3f3f46; font-weight: 500; }
+        .howto { max-width: 1440px; margin: 20px auto 0; font-size: .84rem; color: var(--text-secondary); line-height: 1.7; }
+        .howto ol { padding-left: 20px; margin-top: 10px; }
+        .howto b { color: var(--text-primary); }
+    </style>
+</head>
+<body>
+
+    <header class="top-bar">
+        <div class="app-brand">
+            <div class="app-logo-icon">TV</div>
+            <div>
+                <h1>Sistemi i Faturimit & Abonimeve</h1>
+                <p>Menaxhim lokal, gjenerim PDF me QR dhe njoftim i shpejtë për klientët</p>
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-pill"><span>Gjithsej Fatura</span><strong id="stat-total-count">0</strong></div>
+            <div class="stat-pill stat-paid"><span>Arkëtuar (Paguar)</span><strong id="stat-paid-sum">0.00 €</strong></div>
+            <div class="stat-pill stat-unpaid"><span>Borxh (Papaguar)</span><strong id="stat-unpaid-sum">0.00 €</strong></div>
+            <div class="stat-pill stat-expiring"><span>Skadojnë ≤ 7 ditë</span><strong id="stat-expiring-count">0</strong></div>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <div>
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Krijo / Redakto Faturën</div>
+                    <span class="inv-badge" id="ui-inv-number">2026-000000</span>
+                </div>
+
+                <div id="alert-box" class="alert-error"></div>
+
+                <form id="billing-form" onsubmit="return false;" autocomplete="off">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="providerName">Emri i Shërbimit / Brendit tënd</label>
+                            <input type="text" id="providerName" value="ALB KANALE TV" placeholder="p.sh. ALB KANALE">
+                        </div>
+                        <div class="form-group">
+                            <label for="providerContact">Kontakti / Support në Faturë</label>
+                            <input type="text" id="providerContact" placeholder="p.sh. +383 44 000 000">
+                        </div>
+                    </div>
+
+
+                    <div class="form-section-label">1. Të Dhënat e Klientit</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="clientPhone">Numri i Telefonit (WhatsApp) *</label>
+                            <input type="text" id="clientPhone" placeholder="p.sh. +38344123456" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="clientName">Emri dhe Mbiemri (Opsionale)</label>
+                            <input type="text" id="clientName" placeholder="p.sh. Blerim Gashi">
+                        </div>
+                    </div>
+                    <div id="client-info" class="client-info"></div>
+                    <div class="form-group">
+                        <label for="clientId">Username / MAC / ID e Klientit (Opsionale)</label>
+                        <div class="idsel-wrap" id="idsel-wrap">
+                            <input type="text" id="clientId" placeholder="Kliko këtu për të zgjedhur: MAC ose Xtream">
+                            <button type="button" class="idsel-badge" id="idsel-badge">MAC ▾</button>
+                            <div class="idsel-menu" id="idsel-menu">
+                                <button type="button" data-mode="mac">MAC</button>
+                                <button type="button" data-mode="xtream">Xtream</button>
+                            </div>
+                        </div>
+                        <div class="form-group" id="devkey-group" style="display:none; margin-top:8px; margin-bottom:0;">
+                            <label for="deviceKey">Device Key (Opsionale)</label>
+                            <input type="text" id="deviceKey" placeholder="p.sh. 123456">
+                        </div>
+                        <div class="xtream-box" id="xtream-box">
+                            <div class="xtream-head"><span>Xtream</span><button type="button" class="btn btn-outline btn-xs" id="idsel-change">Ndrysho</button></div>
+                            <div class="form-row-3">
+                                <div class="form-group"><label for="xtUser">Username:</label><input type="text" id="xtUser" placeholder="username"></div>
+                                <div class="form-group"><label for="xtPass">Password:</label><input type="text" id="xtPass" placeholder="password"></div>
+                                <div class="form-group"><label for="xtLine">Line:</label><input type="text" id="xtLine" placeholder="line"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-copy-login" style="display:none; margin-top:8px;">📋 Kopjo të dhënat e hyrjes</button>
+                    </div>
+
+                    <div class="form-section-label">2. Paketa e Abonimit (Zgjedhje e shpejtë)</div>
+                    <div class="preset-group">
+                        <button type="button" class="preset-btn" data-pkg="1">📦 1 Muaj</button>
+                        <button type="button" class="preset-btn" data-pkg="3">📦 3 Muaj</button>
+                        <button type="button" class="preset-btn" data-pkg="12">📦 12 Muaj</button>
+                        <button type="button" class="preset-btn custom" data-pkg="custom">Custom</button>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="serviceTitle">Përshkrimi i Shërbimit</label>
+                            <input type="text" id="serviceTitle" value="Abonim për shërbime televizive">
+                        </div>
+                        <div class="form-group">
+                            <label for="packageDetail">Paketa / Pajisja</label>
+                            <input type="text" id="packageDetail" value="Paketa 1 Vjeçare (Full HD / 4K)">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="issueDate">Data e Lëshimit *</label>
+                            <input type="date" id="issueDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="expiryDate">Data e Skadimit *</label>
+                            <input type="date" id="expiryDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-section-label">3. Pagesa dhe Statusi</div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label for="amount">Shuma (€) *</label>
+                            <input type="number" id="amount" step="0.01" min="0.01" placeholder="50.00" inputmode="decimal" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="status">Statusi *</label>
+                            <select id="status">
+                                <option value="PAGUAR">PAGUAR</option>
+                                <option value="PAPAGUAR">PAPAGUAR</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentMethod">Mënyra</label>
+                            <select id="paymentMethod">
+                                <option value="Online" selected>Online</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Bankë">Bankë</option>
+                                <option value="Transfertë">Transfertë</option>
+                                <option value="">Pa specifikuar</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Shënim në Faturë (opsional)</label>
+                        <textarea id="notes" placeholder="p.sh. Abonimi aktivizohet menjëherë. Për çdo ndihmë teknike na kontaktoni."></textarea>
+                    </div>
+
+                    <div class="form-section-label">Cilësimet e Biznesit</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="logoFile">Logo (PNG/JPG, max 500KB)</label>
+                            <div class="file-row"><input type="file" id="logoFile" accept="image/*"><button type="button" class="btn btn-outline btn-xs" id="logoClear" title="Hiq logon">✕</button></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="stampFile">Nënshkrimi / Vula (PNG/JPG, max 500KB)</label>
+                            <div class="file-row"><input type="file" id="stampFile" accept="image/*"><button type="button" class="btn btn-outline btn-xs" id="stampClear" title="Hiq vulën">✕</button></div>
+                        </div>
+                    </div>
+
+                    <div class="action-grid">
+                        <button type="button" class="btn btn-primary" id="btn-save-pdf">Shkarko Faturën PDF & Ruaj</button>
+                        <button type="button" class="btn btn-outline" id="btn-save-only">Vetëm Ruaj</button>
+                        <button type="button" class="btn btn-whatsapp" id="btn-whatsapp">Dërgo në WhatsApp</button>
+                        <button type="button" class="btn btn-outline" id="btn-share">📤 Ndaj PDF</button>
+                        <button type="button" class="btn btn-outline" id="btn-reset">Faturë e Re (Pastro)</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Arkiva e Klientëve & Faturave</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-import-json">Importo JSON</button>
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-export-json" title="Ruaj kopje rezervë">Eksporto JSON</button>
+                        <input type="file" id="file-import" accept="application/json,.json" style="display:none;">
+                    </div>
+                </div>
+
+                <div class="archive-controls">
+                    <input type="text" id="search-box" placeholder="Kërko… ose status:paguar skadon:7 shuma:>50 data:2026-10">
+                    <select id="filter-status">
+                        <option value="ALL">Të gjitha</option>
+                        <option value="PAGUAR">Vetëm të paguara</option>
+                        <option value="PAPAGUAR">Vetëm borxh</option>
+                        <option value="EXPIRING">Skadojnë shpejt</option>
+                    </select>
+                </div>
+
+                <div id="archive-list" class="archive-list"></div>
+
+                <div class="backup-box">
+                    <div class="form-section-label">Sinkronizim PC ⇄ iPhone (Dropbox)</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-sync-send">⬆️ Dërgo te Dropbox</button>
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-sync-get">⬇️ Merr nga Dropbox</button>
+                        <input type="file" id="file-sync" accept="application/json,.json" style="display:none;">
+                    </div>
+                    <div class="hint">Skedari: <b>te_dhenat_faturimit.json</b>. «Merr» bashkon (nuk fshin) faturat e reja me ato që ke këtu.</div>
+
+                    <div class="form-section-label" style="margin-top:14px;">☁️ Sinkronizim automatik me Dropbox</div>
+                    <div id="dbx-status" class="hint" style="margin:0 0 8px;">Jo i lidhur.</div>
+                    <div id="dbx-setup">
+                        <input type="text" id="dbx-key" placeholder="App key i Dropbox-it" autocomplete="off" style="width:100%;margin-bottom:6px;">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-outline btn-xs" id="dbx-open">1) Hap Dropbox & lejo</button>
+                        </div>
+                        <input type="text" id="dbx-code" placeholder="2) Ngjit kodin që të jep Dropbox" autocomplete="off" style="width:100%;margin:6px 0;">
+                        <button type="button" class="btn btn-outline btn-xs" id="dbx-confirm">3) Konfirmo lidhjen</button>
+                    </div>
+                    <div id="dbx-actions" style="display:none; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline btn-xs" id="dbx-now">🔄 Sinkronizo tani</button>
+                        <button type="button" class="btn btn-outline btn-xs" id="dbx-off">Shkëput</button>
+                    </div>
+
+                    <div class="form-section-label" style="margin-top:14px;">Backup & Restore</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-backup-now">💾 Shkarko backup tani</button>
+                        <button type="button" class="btn btn-outline btn-xs" id="btn-restore">Rikthe nga file…</button>
+                        <input type="file" id="file-restore" accept="application/json,.json" style="display:none;">
+                    </div>
+                    <div class="hint" id="backup-info"></div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Pamja Paraprake e Faturës (Gati për A4 PDF)</div>
+                    <span style="font-size:0.78rem; color:var(--text-secondary);">Bardhë e zi + Kod QR verifikues</span>
+                </div>
+
+                <div class="preview-stage">
+                    <div id="invoice-sheet" class="invoice-sheet-render">
+                        <div id="p-watermark" class="pdf-watermark">PAGUAR</div>
+                        <div class="pdf-top-bar"></div>
+
+                        <div class="pdf-header">
+                            <div class="pdf-brand"><img id="p-logo" class="pdf-logo" alt=""><div>
+                                <div class="pdf-brand-name" id="p-provider-name">ALB KANALE TV</div>
+                                <div class="pdf-brand-sub" id="p-provider-contact">Shërbime Televizive Dixhitale</div>
+                            </div></div>
+                            <div class="pdf-doc-type">
+                                <div class="pdf-doc-title">FATURË</div>
+                                <div class="pdf-doc-no" id="p-inv-no">2026-000000</div>
+                            </div>
+                        </div>
+
+                        <div class="pdf-parties">
+                            <div class="pdf-box">
+                                <div class="pdf-box-label">Faturuar Për Klientin</div>
+                                <div class="pdf-client-name" id="p-client-name">Klient</div>
+                                <div class="pdf-meta-line" id="p-phone-row" style="display:none;"><span>Tel / WhatsApp:</span><strong id="p-client-phone"></strong></div>
+                            </div>
+                            <div class="pdf-box">
+                                <div class="pdf-box-label">Detajet e Faturimit</div>
+                                <div class="pdf-meta-line"><span>Data e lëshimit:</span><strong id="p-issue-date">--.--.----</strong></div>
+                                <div class="pdf-meta-line"><span>Skadimi i abonimit:</span><strong id="p-expiry-date">--.--.----</strong></div>
+                                <div class="pdf-meta-line" id="p-method-row"><span>Mënyra e pagesës:</span><strong id="p-payment-method">Online</strong></div>
+                            </div>
+                        </div>
+
+                        <div id="p-id-block"></div>
+
+                        <table class="pdf-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:48%;">Përshkrimi i Shërbimit</th>
+                                    <th style="width:30%;">Periudha / Skadimi</th>
+                                    <th class="col-right" style="width:22%;">Shuma</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="pdf-service-main" id="p-service-title">Abonim për shërbime televizive</div>
+                                        <div class="pdf-service-sub" id="p-package-detail">Paketa 1 Vjeçare (Full HD / 4K)</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight:700; color:#000;">Deri më: <span id="p-table-expiry">--.--.----</span></div>
+                                        <div style="font-size:0.76rem; color:#52525b;" id="p-days-left">Abonim aktiv</div>
+                                    </td>
+                                    <td class="col-right" style="font-weight:800; font-size:0.98rem; color:#000;" id="p-table-amount">0.00 €</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="pdf-summary-grid">
+                            <div class="pdf-left-bottom">
+                                <div class="pdf-qr-box">
+                                    <div id="qrcode"></div>
+                                </div>
+                                <div class="pdf-notes-stamp-col">
+                                    <div id="p-status-stamp" class="pdf-stamp-badge stamp-paid">PAGUAR</div>
+                                    <div id="p-expiry-note" class="pdf-expiry-note"></div>
+                                    <div id="p-notes-container" class="pdf-notes-box" style="display:none;">
+                                        <strong>Shënim:</strong> <span id="p-notes-text"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <table class="pdf-totals-table">
+                                    <tr><td>Shuma totale:</td><td class="amt" id="p-total-val">0.00 €</td></tr>
+                                    <tr class="final-row"><td id="p-balance-label">Shuma e paguar:</td><td class="amt" id="p-balance-val">0.00 €</td></tr>
+                                </table>
+                                <div class="pdf-sign"><img id="p-stamp" alt=""><div class="pdf-sign-line" id="p-sign-line"><span id="p-signer-name">Alb-Kanale</span></div></div>
+                            </div>
+                        </div>
+
+                        <div class="pdf-footer">
+                            <span>Ju falënderojmë për besimin dhe bashkëpunimin tuaj!</span>
+                            <span id="p-footer-ref" style="font-family:'JetBrains Mono', monospace;"></span>
+                        </div>
+                        <div class="pdf-contact-line" id="p-contact-line"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <section class="panel howto">
+        <div class="panel-title">Si të përdoret</div>
+        <ol>
+            <li><b>Hapja e parë:</b> në Chrome/Edge/Opera shtypni «Zgjidh dosjen e të dhënave», zgjidhni një dosje (p.sh. «Faturimi»). Aplikacioni krijon aty <i>te_dhenat_faturimit.json</i> dhe ruan automatikisht + 5 backup. Në hapjet e ardhshme shtypni «Vazhdo». Në Safari/Firefox të dhënat ruhen lokalisht — përdorni «Shkarko backup tani» rregullisht.</li>
+            <li><b>Logo dhe nënshkrimi:</b> në formë ngarkoni logon dhe vulën/nënshkrimin (PNG/JPG, max 500KB); ✕ i heq. Pa ngarkim, aplikacioni gjeneron vetë logo dhe vulë. Plotësoni emrin dhe pozicionin e nënshkruesit.</li>
+            <li><b>PDF në WhatsApp nga telefoni:</b> plotësoni faturën → «Dërgo në WhatsApp» → zgjidhni WhatsApp në menunë e ndarjes (PDF-ja bashkëngjitet vetë). Në kompjuter hapet WhatsApp Web dhe PDF-ja shkarkohet për t’u ngjitur manualisht.</li>
+            <li><b>Kërkimi:</b> status:paguar • skadon:7 • shuma:&gt;50 • data:2026-10 (kombinohen me tekst të lirë).</li>
+        </ol>
+    </section>
+
+    <div id="save-ind" class="save-ind">⏳ Duke ngarkuar...</div>
+
+    <div id="gate" class="modal-back"><div class="modal">
+        <h3>Ju lutem zgjidhni file-in e të dhënave</h3>
+        <p id="gate-msg"></p>
+        <p>Zgjidhni (ose krijoni) një dosje të dedikuar, p.sh. «Faturimi» — jo direkt Desktop/Downloads. Aty ruhen <b>te_dhenat_faturimit.json</b> dhe 5 backup-et e fundit.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="gate-resume" style="display:none;">🔓 Vazhdo me dosjen e ruajtur</button>
+            <button type="button" class="btn btn-primary" id="gate-pick">📁 Zgjidh dosjen e të dhënave</button>
+        </div>
+    </div></div>
+
+    <div id="pkg-modal" class="modal-back"><div class="modal">
+        <h3>📦 Paketa 12 Mujore</h3>
+        <label class="radio-row"><input type="radio" name="tier" value="Basic" data-price="60" checked> Basic <b>60 €</b></label>
+        <label class="radio-row"><input type="radio" name="tier" value="Premium" data-price="70"> Premium <b>70 €</b></label>
+        <label class="radio-row"><input type="radio" name="tier" value="Ultra Premium" data-price="80"> Ultra Premium <b>80 €</b></label>
+        <div class="form-group"><label for="pkgNote">Shënim shtesë për pakon (opsionale)</label><textarea id="pkgNote"></textarea></div>
+        <div class="modal-actions"><button type="button" class="btn btn-outline" id="pkg-cancel">Anulo</button><button type="button" class="btn btn-primary" id="pkg-ok">Konfirmo</button></div>
+    </div></div>
+
+    <div id="hist-modal" class="modal-back"><div class="modal" style="max-width:720px;">
+        <h3>Historiku i Klientit</h3>
+        <div id="hist-body"></div>
+        <div class="modal-actions"><button type="button" class="btn btn-outline" id="hist-close">Mbyll</button><button type="button" class="btn btn-primary" id="hist-renew">Rinovo abonimin</button></div>
+    </div></div>
+
+    <div id="toast" class="toast"></div>
+
+<script>
+    const STORAGE_DATA_KEY = 'pro_billing_invoices_v3';
+    const STORAGE_BRAND_KEY = 'pro_billing_brand_v3';
+
+    const $ = id => document.getElementById(id);
+    const providerNameEl = $('providerName'), providerContactEl = $('providerContact');
+    const clientNameEl = $('clientName'), clientPhoneEl = $('clientPhone'), clientIdEl = $('clientId');
+    const deviceKeyEl = $('deviceKey'), xtUserEl = $('xtUser'), xtPassEl = $('xtPass'), xtLineEl = $('xtLine');
+
+    /* ---------- Zgjedhja MAC / Xtream ---------- */
+    let idMode = null; // null | 'mac' | 'xtream'
+    function currentIdMode() { return idMode || ((clientIdEl.value.trim() || deviceKeyEl.value.trim()) ? 'mac' : null); }
+    function getIdData() {
+        const mode = currentIdMode();
+        if (mode === 'xtream') {
+            const u = xtUserEl.value.trim(), pw = xtPassEl.value.trim(), l = xtLineEl.value.trim();
+            return { idType: (u || pw || l) ? 'xtream' : '', clientId: u, deviceKey: '', xtUser: u, xtPass: pw, xtLine: l };
+        }
+        return { idType: mode === 'mac' ? 'mac' : '', clientId: clientIdEl.value.trim(), deviceKey: deviceKeyEl.value.trim(), xtUser: '', xtPass: '', xtLine: '' };
+    }
+    // Rreshtat që shfaqen në faturë / mesazh / historik
+    function idLines(rec) {
+        if (rec.idType === 'xtream') {
+            return [['Username:', rec.xtUser || '—'], ['Password:', rec.xtPass || '—'], ['Line:', rec.xtLine || '—']];
+        }
+        const rows = [];
+        if (rec.clientId) rows.push(['MAC:', rec.clientId]);
+        if (rec.deviceKey) rows.push(['Device Key:', rec.deviceKey]);
+        return rows;
+    }
+    function applyIdMode(mode) {
+        idMode = mode;
+        const isX = mode === 'xtream';
+        $('idsel-wrap').style.display = isX ? 'none' : '';
+        $('xtream-box').style.display = isX ? 'block' : 'none';
+        $('devkey-group').style.display = mode === 'mac' ? '' : 'none';
+        $('idsel-badge').classList.toggle('show', mode === 'mac');
+        clientIdEl.placeholder = mode === 'mac' ? 'p.sh. 00:1A:79:XX:XX:XX' : 'Kliko këtu për të zgjedhur: MAC ose Xtream';
+        $('idsel-menu').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    }
+    function setIdFromRecord(rec) {
+        deviceKeyEl.value = rec.deviceKey || '';
+        xtUserEl.value = rec.xtUser || ''; xtPassEl.value = rec.xtPass || ''; xtLineEl.value = rec.xtLine || '';
+        clientIdEl.value = rec.idType === 'xtream' ? '' : (rec.clientId || '');
+        applyIdMode(rec.idType === 'xtream' ? 'xtream' : ((rec.clientId || rec.deviceKey) ? 'mac' : null));
+    }
+    // Kopjon të dhënat e hyrjes (Username/Password/Line ose MAC/Device Key) në clipboard
+    async function copyLoginText(text) {
+        if (!text) return;
+        let ok = false;
+        try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { /* rezervë më poshtë */ }
+        if (!ok) {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed; top:0; left:0; opacity:0;';
+            document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            ta.remove();
+        }
+        toast(ok ? 'U kopjuan të dhënat e hyrjes.' : 'Kopjimi dështoi.', !ok);
+    }
+    $('btn-copy-login').addEventListener('click', () => copyLoginText(idLines(getIdData()).map(([k, v]) => `${k} ${v}`).join('\n')));
+    function openIdMenu() { $('idsel-menu').classList.add('show'); }
+    function closeIdMenu() { $('idsel-menu').classList.remove('show'); }
+    clientIdEl.addEventListener('focus', () => { if (!clientIdEl.value.trim() || !idMode) openIdMenu(); });
+    clientIdEl.addEventListener('click', () => { if (!clientIdEl.value.trim() || !idMode) openIdMenu(); });
+    $('idsel-badge').addEventListener('click', openIdMenu);
+    $('idsel-change').addEventListener('click', () => { $('idsel-wrap').style.display = ''; openIdMenu(); });
+    $('idsel-menu').addEventListener('mousedown', e => e.preventDefault());
+    $('idsel-menu').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        applyIdMode(b.dataset.mode);
+        closeIdMenu();
+        if (b.dataset.mode === 'mac') clientIdEl.focus(); else xtUserEl.focus();
+        refreshPreview();
+    }));
+    document.addEventListener('mousedown', e => {
+        if (!e.target.closest('#idsel-wrap') && !e.target.closest('#idsel-change')) closeIdMenu();
+    });
+    const serviceTitleEl = $('serviceTitle'), packageDetailEl = $('packageDetail');
+    const issueDateEl = $('issueDate'), expiryDateEl = $('expiryDate');
+    const amountEl = $('amount'), statusEl = $('status'), paymentMethodEl = $('paymentMethod'), notesEl = $('notes');
+    const alertBox = $('alert-box');
+
+    let activeInvoiceNo = '';
+    let qrDataUrl = '';
+    let pdfBusy = false;
+
+    /* ---------- Storage i sigurt ---------- */
+    function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+
+    function toast(msg, isErr) {
+        const t = $('toast');
+        t.textContent = msg;
+        t.style.background = isErr ? '#ef4444' : '#10b981';
+        t.style.color = isErr ? '#fff' : '#052e1f';
+        t.classList.add('show');
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    /* ---------- Data ---------- */
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function toISO(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+    function getTodayISO() { return toISO(new Date()); }
+
+    function addMonthsISO(isoStart, months) {
+        const base = isoStart ? new Date(isoStart + 'T12:00:00') : new Date();
+        const day = base.getDate();
+        base.setDate(1);
+        base.setMonth(base.getMonth() + months);
+        const lastDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+        base.setDate(Math.min(day, lastDay));
+        return toISO(base);
+    }
+
+    function formatDateSq(iso) {
+        if (!iso) return '--.--.----';
+        const p = iso.split('-');
+        return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : iso;
+    }
+
+    function formatEuro(val) {
+        const n = parseFloat(val);
+        return (isNaN(n) || n < 0) ? '0.00 €' : `${n.toFixed(2)} €`;
+    }
+
+    function getDaysDifference(expiryIso) {
+        if (!expiryIso) return null;
+        const today = new Date(getTodayISO() + 'T00:00:00');
+        const exp = new Date(expiryIso + 'T00:00:00');
+        return Math.round((exp - today) / 86400000);
+    }
+
+    function escapeSafe(s) {
+        if (s === undefined || s === null) return '';
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+    }
+
+    /* ---------- Numri i faturës random (Viti-XXXXXX) ---------- */
+    function generateRandomInvoiceNumber() {
+        const year = new Date().getFullYear();
+        const used = new Set(getInvoices().map(i => i.invoiceNumber));
+        let candidate = '';
+        do {
+            const randSeq = Math.floor(100000 + Math.random() * 900000); // 6 shifra random 100000-999999
+            candidate = `${year}-${randSeq}`;
+        } while (used.has(candidate));
+        return candidate;
+    }
+
+    /* ---------- QR ---------- */
+    function updateQRCode(textData) {
+        const container = $('qrcode');
+        container.innerHTML = '';
+        try {
+            const tmp = document.createElement('div');
+            new QRCode(tmp, { text: textData, width: 68, height: 68, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+            const canvas = tmp.querySelector('canvas');
+            const img = document.createElement('img');
+            img.width = 68; img.height = 68;
+            img.alt = 'QR';
+            if (canvas) {
+                qrDataUrl = canvas.toDataURL('image/png');
+                img.src = qrDataUrl;
+            } else {
+                const i2 = tmp.querySelector('img');
+                qrDataUrl = i2 ? i2.src : '';
+                img.src = qrDataUrl;
+            }
+            container.appendChild(img);
+        } catch (e) { qrDataUrl = ''; }
+        container.parentElement.style.display = qrDataUrl ? '' : 'none';
+    }
+
+    /* ---------- Pamja paraprake ---------- */
+    function refreshPreview() {
+        syncBrand(); renderBrandAssets();
+
+        $('ui-inv-number').textContent = activeInvoiceNo;
+        $('p-inv-no').textContent = activeInvoiceNo;
+        $('p-footer-ref').textContent = activeInvoiceNo;
+
+        $('p-provider-name').textContent = providerNameEl.value.trim() || 'SHËRBIME TELEVIZIVE';
+        $('p-provider-contact').textContent = providerContactEl.value.trim() || '';
+        const contactTxt = providerContactEl.value.trim();
+        $('p-contact-line').textContent = contactTxt ? `Kontakt / WhatsApp: ${contactTxt}` : '';
+
+        const cName = clientNameEl.value.trim();
+        const cPhone = clientPhoneEl.value.trim();
+        const idRec = getIdData();
+
+        // Nëse nuk ka emër, shfaqet Emri -> ose Tel -> ose "Klient"
+        $('p-client-name').textContent = cName || cPhone || 'Klient';
+
+        $('p-client-phone').textContent = cPhone;
+        $('p-phone-row').style.display = cPhone ? 'flex' : 'none';
+
+        const idRows = idLines(idRec);
+        $('btn-copy-login').style.display = idRows.length ? '' : 'none';
+        $('p-id-block').innerHTML = idRows.length
+            ? `<div class="pdf-login-box"><div class="pdf-login-label">Të dhënat e hyrjes</div>${idRows.map(([k, v]) =>
+                `<div class="pdf-login-row"><span>${k}</span><strong>${escapeSafe(v)}</strong></div>`).join('')}</div>`
+            : '';
+
+        const issSq = formatDateSq(issueDateEl.value);
+        const expSq = formatDateSq(expiryDateEl.value);
+        $('p-issue-date').textContent = issSq;
+        $('p-expiry-date').textContent = expSq;
+        $('p-table-expiry').textContent = expSq;
+
+        const daysLeft = getDaysDifference(expiryDateEl.value);
+        const daysLabel = $('p-days-left');
+        if (daysLeft !== null) {
+            if (daysLeft < 0) daysLabel.textContent = `Skaduar (${Math.abs(daysLeft)} ditë më parë)`;
+            else if (daysLeft === 0) daysLabel.textContent = 'Skadon sot';
+            else daysLabel.textContent = `Vlefshmëria: ${daysLeft} ditë`;
+        } else {
+            daysLabel.textContent = 'Abonim aktiv';
+        }
+        const expNote = $('p-expiry-note');
+        if (daysLeft === null) expNote.textContent = '';
+        else if (daysLeft < 0) expNote.textContent = `Ka skaduar para ${Math.abs(daysLeft)} ditësh`;
+        else if (daysLeft === 0) expNote.textContent = 'Skadon sot';
+        else expNote.textContent = `Skadon pas ${daysLeft} ditësh`;
+
+        $('p-service-title').textContent = serviceTitleEl.value.trim() || 'Abonim për shërbime televizive';
+        $('p-package-detail').textContent = packageDetailEl.value.trim();
+
+        const methodVal = paymentMethodEl.value;
+        $('p-payment-method').textContent = methodVal;
+        $('p-method-row').style.display = methodVal ? 'flex' : 'none';
+
+        const euroStr = formatEuro(amountEl.value);
+        $('p-table-amount').textContent = euroStr;
+        $('p-total-val').textContent = euroStr;
+        $('p-balance-val').textContent = euroStr;
+
+        const st = statusEl.value;
+        statusEl.classList.toggle('unpaid-sel', st !== 'PAGUAR');
+        const stamp = $('p-status-stamp');
+        if (st === 'PAGUAR') {
+            stamp.textContent = 'PAGUAR';
+            stamp.className = 'pdf-stamp-badge stamp-paid';
+            $('p-watermark').textContent = 'PAGUAR'; $('p-watermark').className = 'pdf-watermark';
+            $('p-balance-label').textContent = 'Shuma e paguar:';
+        } else {
+            stamp.textContent = 'PAPAGUAR';
+            stamp.className = 'pdf-stamp-badge stamp-unpaid';
+            $('p-watermark').textContent = 'PAPAGUAR'; $('p-watermark').className = 'pdf-watermark wm-unpaid';
+            $('p-balance-label').textContent = 'Shuma e papaguar:';
+        }
+
+        const noteText = notesEl.value.trim();
+        $('p-notes-text').textContent = noteText;
+        $('p-notes-container').style.display = noteText ? 'block' : 'none';
+
+        updateQRCode(`NR:${activeInvoiceNo}|TEL:${cPhone || '-'}|KLIENTI:${cName || 'Klient'}|SKADON:${expSq}|SHUMA:${euroStr}|STATUSI:${st}`);
+    }
+
+    /* ---------- Validimi ---------- */
+    function showAlert(msg) { alertBox.textContent = msg; alertBox.style.display = 'block'; }
+
+    function validateInputs() {
+        alertBox.style.display = 'none';
+        if (!clientPhoneEl.value.trim()) {
+            showAlert('Ju lutem shkruani numrin e telefonit (WhatsApp) të klientit.');
+            clientPhoneEl.focus();
+            return false;
+        }
+        if (!issueDateEl.value || !expiryDateEl.value) {
+            showAlert('Ju lutem plotësoni datën e lëshimit dhe datën e skadimit.');
+            return false;
+        }
+        if (expiryDateEl.value < issueDateEl.value) {
+            showAlert('Data e skadimit nuk mund të jetë para datës së lëshimit.');
+            expiryDateEl.focus();
+            return false;
+        }
+        const amt = parseFloat(amountEl.value);
+        if (isNaN(amt) || amt <= 0) {
+            showAlert('Ju lutem vendosni një shumë të vlefshme më të madhe se 0 €.');
+            amountEl.focus();
+            return false;
+        }
+        return true;
+    }
+
+    /* ---------- Ruajtja ---------- */
+    function getInvoices() { return DB.invoices; }
+    function saveInvoices(list) { DB.invoices = list; scheduleSave(); }
+
+    function saveCurrentInvoice() {
+        const record = {
+            invoiceNumber: activeInvoiceNo,
+            providerName: providerNameEl.value.trim(),
+            providerContact: providerContactEl.value.trim(),
+            clientName: clientNameEl.value.trim(),
+            clientPhone: clientPhoneEl.value.trim(),
+            ...getIdData(),
+            serviceTitle: serviceTitleEl.value.trim(),
+            packageDetail: packageDetailEl.value.trim(),
+            issueDate: issueDateEl.value,
+            expiryDate: expiryDateEl.value,
+            amount: parseFloat(amountEl.value).toFixed(2),
+            status: statusEl.value,
+            paymentMethod: paymentMethodEl.value,
+            notes: notesEl.value.trim(),
+            clientUid: resolveClientUid(clientPhoneEl.value),
+            updatedAt: new Date().toISOString()
+        };
+        const list = getInvoices();
+        const idx = list.findIndex(x => x.invoiceNumber === record.invoiceNumber);
+        if (idx >= 0) list[idx] = record;
+        else { list.unshift(record); }
+        saveInvoices(list);
+        renderArchiveAndStats();
+        return record;
+    }
+
+    /* ---------- Arkiva ---------- */
+    function renderArchiveAndStats() {
+        updateClientInfo(false);
+        const all = getInvoices();
+        let paidSum = 0, unpaidSum = 0, expiringSoon = 0;
+
+        all.forEach(inv => {
+            const a = parseFloat(inv.amount) || 0;
+            if (inv.status === 'PAGUAR') paidSum += a; else unpaidSum += a;
+            const dLeft = getDaysDifference(inv.expiryDate);
+            if (dLeft !== null && dLeft >= 0 && dLeft <= 7) expiringSoon++;
+        });
+
+        $('stat-total-count').textContent = all.length;
+        $('stat-paid-sum').textContent = `${paidSum.toFixed(2)} €`;
+        $('stat-unpaid-sum').textContent = `${unpaidSum.toFixed(2)} €`;
+        $('stat-expiring-count').textContent = expiringSoon;
+
+        const pq = parseQuery($('search-box').value);
+        const statusFilter = $('filter-status').value;
+        const filtered = all.filter(inv => {
+            if (!matchInvoice(inv, pq)) return false;
+            if (statusFilter === 'PAGUAR' || statusFilter === 'PAPAGUAR') return inv.status === statusFilter;
+            if (statusFilter === 'EXPIRING') { const d = getDaysDifference(inv.expiryDate); return d !== null && d <= 7; }
+            return true;
+        });
+
+        const listEl = $('archive-list');
+        if (filtered.length === 0) {
+            listEl.innerHTML = '<div style="padding:18px; text-align:center; color:#64748b; font-size:0.84rem;">Nuk ka fatura që përputhen me kërkimin.</div>';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        filtered.forEach(inv => {
+            const row = document.createElement('div');
+            row.className = 'archive-item';
+            const dLeft = getDaysDifference(inv.expiryDate);
+            const expBadge = (dLeft !== null && dLeft <= 7)
+                ? `<span class="tag-status tag-exp">${dLeft < 0 ? 'Skaduar' : dLeft + 'd'}</span>` : '';
+            const stBadge = inv.status === 'PAGUAR'
+                ? `<span class="tag-status tag-paid">PAGUAR</span>`
+                : `<span class="tag-status tag-unpaid">PAPAGUAR</span>`;
+            const payBtn = inv.status !== 'PAGUAR' ? `<button class="btn btn-xs btn-green-xs" data-act="pay" title="Shëno si të paguar">✓ Paguaj</button>` : '';
+            const keyBtn = idLines(inv).length ? `<button class="btn btn-outline btn-xs" data-act="copykey" title="Kopjo të dhënat e hyrjes">🔑</button>` : '';
+            const waBtn = (dLeft !== null && dLeft <= 7 && inv.clientPhone)
+                ? `<button class="btn btn-xs btn-amber-xs" data-act="remind" title="Dërgo kujtesë në WhatsApp">Kujtesë</button>` : '';
+
+            const displayTitle = inv.clientName
+                ? `${escapeSafe(inv.clientName)} <span style="font-weight:500; color:#94a3b8; font-size:0.78rem;">(${escapeSafe(inv.clientPhone || '')})</span>`
+                : `${escapeSafe(inv.clientPhone || 'Klient')}`;
+
+            row.innerHTML = `
+                <div style="min-width:0;">
+                    <div style="font-weight:700; color:#f8fafc;">${displayTitle}${stBadge}${expBadge}</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">
+                        ${escapeSafe(inv.invoiceNumber)} • Skadon: ${formatDateSq(inv.expiryDate)} • <strong>${formatEuro(inv.amount)}</strong>
+                    </div>
+                </div>
+                <div class="archive-actions">
+                    ${payBtn}${waBtn}${keyBtn}
+                    <button class="btn btn-outline btn-xs" data-act="load">Hap</button>
+                    <button class="btn btn-xs btn-solid-xs" data-act="pdf">PDF</button>
+                    <button class="btn btn-outline btn-xs" data-act="renew" title="Rinovo abonimin">Rinovo</button>
+                    <button class="btn btn-outline btn-xs" data-act="dup" title="Kopjo faturën">📋 Dublikat</button>
+                    <button class="btn btn-outline btn-xs" style="color:#f87171;" data-act="del">✕</button>
+                </div>`;
+
+            row.querySelector('[data-act="load"]').onclick = () => { loadInvoice(inv); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+            row.querySelector('[data-act="pdf"]').onclick = async () => { loadInvoice(inv); await generatePDFFile(inv.invoiceNumber, inv.clientName || inv.clientPhone); };
+            row.querySelector('[data-act="renew"]').onclick = () => { renewInvoice(inv); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+            // Konfirmim me dy prekje (confirm() bllokohet shpesh në iPhone / shikuesin e Dropbox)
+            const delBtn = row.querySelector('[data-act="del"]');
+            delBtn.onclick = () => {
+                if (delBtn.dataset.armed === '1') { deleteInvoice(inv.invoiceNumber); return; }
+                delBtn.dataset.armed = '1';
+                delBtn.textContent = 'Fshi? ✓';
+                delBtn.style.background = 'rgba(239,68,68,.2)';
+                setTimeout(() => {
+                    if (!delBtn.isConnected) return;
+                    delBtn.dataset.armed = ''; delBtn.textContent = '✕'; delBtn.style.background = '';
+                }, 3500);
+            };
+            row.querySelector('[data-act="dup"]').onclick = () => duplicateInvoice(inv);
+            const ck = row.querySelector('[data-act="copykey"]');
+            if (ck) ck.onclick = () => copyLoginText(idLines(inv).map(([k, v]) => `${k} ${v}`).join('\n'));
+            const pay = row.querySelector('[data-act="pay"]');
+            if (pay) pay.onclick = () => markPaid(inv.invoiceNumber);
+            const rem = row.querySelector('[data-act="remind"]');
+            if (rem) rem.onclick = () => sendReminder(inv);
+
+            listEl.appendChild(row);
+        });
+    }
+
+    function markPaid(invNo) {
+        const list = getInvoices();
+        const i = list.findIndex(x => x.invoiceNumber === invNo);
+        if (i < 0) return;
+        list[i].status = 'PAGUAR';
+        list[i].updatedAt = new Date().toISOString();
+        saveInvoices(list);
+        if (activeInvoiceNo === invNo) statusEl.value = 'PAGUAR';
+        refreshPreview();
+        renderArchiveAndStats();
+        toast('Fatura u shënua si e paguar.');
+    }
+
+    function loadInvoice(inv) {
+        alertBox.style.display = 'none';
+        activeInvoiceNo = inv.invoiceNumber;
+        if (inv.providerName) providerNameEl.value = inv.providerName;
+        if (inv.providerContact !== undefined) providerContactEl.value = inv.providerContact;
+        clientNameEl.value = inv.clientName || '';
+        clientPhoneEl.value = inv.clientPhone || '';
+        setIdFromRecord(inv);
+        serviceTitleEl.value = inv.serviceTitle || 'Abonim për shërbime televizive';
+        packageDetailEl.value = inv.packageDetail || '';
+        issueDateEl.value = inv.issueDate || getTodayISO();
+        expiryDateEl.value = inv.expiryDate || '';
+        amountEl.value = inv.amount || '';
+        statusEl.value = inv.status || 'PAGUAR';
+        paymentMethodEl.value = inv.paymentMethod !== undefined ? inv.paymentMethod : '';
+        notesEl.value = inv.notes || '';
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        refreshPreview(); updateClientInfo(false);
+    }
+
+    function renewInvoice(inv) {
+        loadInvoice(inv);
+        activeInvoiceNo = generateRandomInvoiceNumber();
+        const today = getTodayISO();
+        const spanDays = Math.max(1, Math.round((new Date(inv.expiryDate + 'T12:00:00') - new Date(inv.issueDate + 'T12:00:00')) / 86400000));
+        const start = (inv.expiryDate && inv.expiryDate > today) ? inv.expiryDate : today;
+        const s = new Date(start + 'T12:00:00');
+        issueDateEl.value = today;
+        s.setDate(s.getDate() + spanDays);
+        expiryDateEl.value = toISO(s);
+        statusEl.value = 'PAPAGUAR';
+        notesEl.value = '';
+        refreshPreview();
+        toast('Faturë e re për rinovim u përgatit.');
+    }
+
+    function deleteInvoice(invNo) {
+        DB.deleted = DB.deleted || {}; DB.deleted[invNo] = new Date().toISOString();
+        saveInvoices(getInvoices().filter(x => x.invoiceNumber !== invNo));
+        renderArchiveAndStats();
+    }
+
+    function resetFormToNew() {
+        alertBox.style.display = 'none';
+        activeInvoiceNo = generateRandomInvoiceNumber();
+        clientNameEl.value = '';
+        clientPhoneEl.value = '';
+        setIdFromRecord({});
+        serviceTitleEl.value = 'Abonim për shërbime televizive';
+        packageDetailEl.value = 'Paketa 1 Vjeçare (Full HD / 4K)';
+        issueDateEl.value = getTodayISO();
+        expiryDateEl.value = addMonthsISO(getTodayISO(), 12);
+        amountEl.value = '';
+        statusEl.value = 'PAGUAR';
+        paymentMethodEl.value = 'Online';
+        notesEl.value = '';
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        refreshPreview(); updateClientInfo(false);
+    }
+
+    /* ---------- PDF (pa prerje & me ngjyra të sakta) ---------- */
+    async function generatePDFFile(invNo, clientIdentifier, mode) {
+        if (pdfBusy) return;
+        if (typeof html2pdf === 'undefined') { toast('Libraria PDF nuk u ngarkua. Kontrollo internetin.', true); return; }
+        pdfBusy = true;
+        const btn = $('btn-save-pdf');
+        if (btn) btn.disabled = true;
+
+        const savedScrollX = window.scrollX || window.pageXOffset;
+        const savedScrollY = window.scrollY || window.pageYOffset;
+        window.scrollTo(0, 0);
+
+        const source = $('invoice-sheet');
+        const safeClient = (clientIdentifier || 'Klient').replace(/[^a-zA-Z0-9ëËçÇ_-]/g, '_');
+        const filename = `${invNo}_${safeClient}.pdf`;
+
+        const stage = document.createElement('div');
+        stage.style.cssText = 'position:absolute; left:0; top:0; width:740px; background:#ffffff; color:#000000; z-index:99999; margin:0; padding:0;';
+
+        const clone = source.cloneNode(true);
+        clone.id = 'invoice-sheet-print';
+        clone.className = 'invoice-sheet-render';
+        clone.style.cssText = 'width:740px; max-width:740px; min-width:740px; background:#ffffff; color:#000000; box-shadow:none; border-radius:0; margin:0; padding:32px 36px; box-sizing:border-box;';
+
+        clone.querySelectorAll('td, .pdf-doc-no, .pdf-meta-line, .pdf-service-main').forEach(el => {
+            if (!el.closest('.final-row') && !el.classList.contains('stamp-paid')) {
+                el.style.color = '#000000';
+            }
+        });
+
+        const qrHolder = clone.querySelector('#qrcode');
+        if (qrHolder && qrDataUrl) {
+            qrHolder.innerHTML = `<img src="${qrDataUrl}" width="68" height="68" style="display:block;">`;
+        }
+
+        stage.appendChild(clone);
+        document.body.appendChild(stage);
+
+        try {
+            if (document.fonts && document.fonts.ready) await document.fonts.ready;
+            await new Promise(r => setTimeout(r, 120));
+
+            const worker = html2pdf().set({
+                margin: [8, 8, 8, 8],
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: 740,
+                    windowWidth: 740,
+                    x: 0,
+                    y: 0,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all'] }
+            }).from(clone);
+            if (mode === 'blob') return new File([await worker.outputPdf('blob')], filename, { type: 'application/pdf' });
+            await worker.save();
+
+            toast('PDF u shkarkua me sukses.');
+        } catch (e) {
+            console.error(e);
+            toast('Gabim gjatë krijimit të PDF-së.', true);
+        } finally {
+            stage.remove();
+            window.scrollTo(savedScrollX, savedScrollY);
+            if (btn) btn.disabled = false;
+            pdfBusy = false;
+        }
+    }
+
+    /* ---------- WhatsApp ---------- */
+    function normalizePhone(p) {
+        let d = String(p || '').replace(/[^0-9+]/g, '');
+        if (d.startsWith('+')) return d.slice(1);
+        if (d.startsWith('00')) return d.slice(2);
+        if (d.startsWith('0')) return '383' + d.slice(1);
+        return d;
+    }
+
+    function openWhatsApp(phone, msg) {
+        const clean = normalizePhone(phone);
+        const url = clean ? `https://wa.me/${clean}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+    }
+
+    function sendReminder(inv) {
+        const dLeft = getDaysDifference(inv.expiryDate);
+        const when = dLeft < 0 ? `ka skaduar më ${formatDateSq(inv.expiryDate)}` : dLeft === 0 ? 'skadon sot' : `skadon më ${formatDateSq(inv.expiryDate)} (edhe ${dLeft} ditë)`;
+        const greeting = inv.clientName ? `Përshëndetje ${inv.clientName},` : `Përshëndetje,`;
+        const msg = `${greeting}\n\nju kujtojmë se abonimi juaj ${when}.\nPër rinovim na kontaktoni. Faleminderit!\n— ${inv.providerName || 'TV'}`;
+        openWhatsApp(inv.clientPhone, msg);
+    }
+
+    /* ---------- Butonat ---------- */
+    $('btn-save-pdf').addEventListener('click', async () => {
+        if (!validateInputs()) return;
+        refreshPreview();
+        const rec = saveCurrentInvoice();
+        await generatePDFFile(rec.invoiceNumber, rec.clientName || rec.clientPhone);
+    });
+
+    $('btn-save-only').addEventListener('click', () => {
+        if (!validateInputs()) return;
+        saveCurrentInvoice();
+        toast('Fatura u ruajt në arkivë.');
+    });
+
+    $('btn-reset').addEventListener('click', resetFormToNew);
+    $('search-box').addEventListener('input', renderArchiveAndStats);$('filter-status').addEventListener('change', renderArchiveAndStats);
+
+    /* ---------- Eksport / Import JSON ---------- */
+    $('btn-export-json').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Arkiva_Faturave_${getTodayISO()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+
+    $('btn-import-json').addEventListener('click', () => $('file-import').click());$('file-import').addEventListener('change', e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                let data = JSON.parse(reader.result); if (data && Array.isArray(data.invoices)) data = data.invoices;
+                if (!Array.isArray(data)) throw new Error('format');
+                const list = getInvoices();
+                const map = new Map(list.map(x => [x.invoiceNumber, x]));
+                let added = 0;
+                data.forEach(x => {
+                    if (x && x.invoiceNumber && (x.clientPhone || x.clientName)) {
+                        if (!map.has(x.invoiceNumber)) added++;
+                        map.set(x.invoiceNumber, x);
+                    }
+                });
+                saveInvoices(Array.from(map.values()).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))));
+                renderArchiveAndStats();
+                toast(`U importuan ${added} fatura të reja.`);
+            } catch (err) { toast('Skedari JSON nuk është i vlefshëm.', true); }
+            e.target.value = '';
+        };
+        reader.readAsText(file);
+    });
+
+    [providerNameEl, providerContactEl, clientNameEl, clientPhoneEl, clientIdEl, deviceKeyEl, xtUserEl, xtPassEl, xtLineEl,
+     serviceTitleEl, packageDetailEl, issueDateEl, expiryDateEl,
+     amountEl, statusEl, paymentMethodEl, notesEl].forEach(el => {
+        el.addEventListener('input', refreshPreview);
+        el.addEventListener('change', refreshPreview);
+    });
+
+    /* ================= RUAJTJA NË FILE JSON (File System Access API) ================= */
+    const FILE_NAME = 'te_dhenat_faturimit.json', LS_DB = 'pro_billing_db_v4';
+    const FSA = 'showDirectoryPicker' in window;
+    let DB = emptyDB(), dirHandle = null, pendingDir = null, dbReady = false, saveTimer = null, chain = Promise.resolve();
+
+    // Struktura bosh e bazës së të dhënave
+    function emptyDB() { return { version: 4, brand: {}, invoices: [], deleted: {} }; }
+
+    // Kthen çdo JSON (array i vjetër ose objekt i ri) në strukturën e DB
+    function normalizeDB(d) {
+        if (Array.isArray(d)) d = { invoices: d };
+        const o = emptyDB();
+        if (d && typeof d === 'object') {
+            if (Array.isArray(d.invoices)) o.invoices = d.invoices;
+            if (d.brand && typeof d.brand === 'object') o.brand = d.brand;
+            if (d.deleted && typeof d.deleted === 'object' && !Array.isArray(d.deleted)) o.deleted = d.deleted;
+        }
+        return o;
+    }
+
+    // IndexedDB: ruan handle-in e dosjes (jo në localStorage)
+    function idb() { return new Promise((res, rej) => { const r = indexedDB.open('faturimi', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+    async function idbGet(k) { const db = await idb(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+    async function idbSet(k, v) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+
+    // Treguesi i ruajtjes lart-djathtas
+    function setInd(st) { const e = $('save-ind'); e.className = 'save-ind ' + st; e.textContent = { ok: '💾 Ruajtur', wait: '⏳ Duke ruajtur...', err: '⚠️ Nuk u ruajt' }[st]; }
+
+    // Ruan me debounce 500ms pas çdo ndryshimi të të dhënave
+    function scheduleSave() {
+        if (!dbReady) return;
+        setInd('wait'); clearTimeout(saveTimer); if (typeof scheduleCloud === 'function') scheduleCloud();
+        saveTimer = setTimeout(() => { saveTimer = null; chain = chain.then(persist); }, 500);
+    }
+
+    // Shkruan një file në dosjen e zgjedhur
+    async function writeFile(name, txt) { const fh = await dirHandle.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close(); }
+
+    // Ruan file-in kryesor + backup me timestamp; mban vetëm 5 backup-et e fundit
+    async function persist() {
+        const json = JSON.stringify(DB);
+        try {
+            if (dirHandle) {
+                await writeFile(FILE_NAME, json);
+                const d = new Date();
+                await writeFile(`backup_${toISO(d)}_${pad(d.getHours())}-${pad(d.getMinutes())}.json`, json);
+                const names = [];
+                for await (const [n] of dirHandle.entries()) if (/^backup_.*\.json$/.test(n)) names.push(n);
+                for (const n of names.sort().slice(0, -5)) await dirHandle.removeEntry(n).catch(() => {});
+            } else if (!lsSet(LS_DB, json)) throw new Error('localStorage');
+            setInd('ok');
+        } catch (e) { console.error(e); setInd('err'); }
+    }
+
+    // Hap file-in nga dosja; krijon file të ri vetëm kur lejohet (zgjedhje e re e dosjes)
+    async function attachDir(h, allowCreate) {
+        let data = null;
+        try { data = JSON.parse((await (await (await h.getFileHandle(FILE_NAME)).getFile()).text()) || '{}'); }
+        catch (e) { if (!(e.name === 'NotFoundError' && allowCreate)) throw e; }
+        dirHandle = h; DB = normalizeDB(data); dbReady = true;
+        if (!data) await persist();
+        $('backup-info').textContent = 'Backup automatik: 5 kopjet e fundit ruhen në të njëjtën dosje me të dhënat.';
+        $('gate').classList.remove('show');
+        bootApp();
+    }
+
+    // Modali bllokues i zgjedhjes së file-it
+    function showGate(msg, canResume) { $('gate-msg').textContent = msg || ''; $('gate-resume').style.display = canResume ? '' : 'none'; $('gate').classList.add('show'); }
+    async function gateTry(fn) {
+        try { await fn(); } catch (e) {
+            if (e.name === 'AbortError') return;
+            showGate(e.name === 'NotFoundError' ? `File-i ${FILE_NAME} nuk u gjet në dosjen e ruajtur.` : 'Nuk u hap file-i i të dhënave. Zgjidhni një dosje të re (p.sh. «Faturimi»).');
+        }
+    }
+    $('gate-pick').onclick = () => gateTry(async () => { const h = await showDirectoryPicker({ mode: 'readwrite', id: 'faturimi' }); await idbSet('dir', h); await attachDir(h, true); });
+    $('gate-resume').onclick = () => gateTry(async () => { if (await pendingDir.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('leje'); await attachDir(pendingDir, false); });
+
+    // Nisja: file në dosje (Chrome/Edge/Opera) ose fallback localStorage + shkarkim manual
+    async function initStorage() {
+        if (!FSA) {
+            const raw = lsGet(LS_DB);
+            try {
+                if (raw) DB = normalizeDB(JSON.parse(raw));
+                else DB = normalizeDB({ invoices: JSON.parse(lsGet(STORAGE_DATA_KEY)) || [], brand: JSON.parse(lsGet(STORAGE_BRAND_KEY)) || {} }); // migrim nga versioni i vjetër
+            } catch (e) { DB = emptyDB(); }
+            dbReady = true;
+            $('backup-info').textContent = 'Ky shfletues nuk mbështet ruajtjen në file: të dhënat ruhen lokalisht. Shkarkoni backup rregullisht dhe rikthejeni me «Rikthe nga file».';
+            return bootApp();
+        }
+        try {
+            const h = await idbGet('dir');
+            if (!h) return showGate('Hapja e parë: zgjidhni vendin ku do të ruhen të dhënat.');
+            if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted') { pendingDir = h; return showGate('Jepni leje për të hapur file-in e të dhënave.', true); }
+            await attachDir(h, false);
+        } catch (e) { gateTry(() => { throw e; }); }
+    }
+
+    // Aplikon markën e ruajtur në formë dhe nis ndërfaqen
+    function bootApp() {
+        const b = DB.brand;
+        if (b.name) providerNameEl.value = b.name;
+        if (b.contact !== undefined) providerContactEl.value = b.contact;
+        resetFormToNew(); renderArchiveAndStats(); setInd('ok');
+        if (typeof cloudInit === 'function') cloudInit();
+    }
+
+    /* ================= MARKA: LOGO, VULA, NËNSHKRIMI ================= */
+    // Ruan fushat tekst të markës në DB kur ndryshojnë
+    function syncBrand() {
+        if (!dbReady) return;
+        const b = DB.brand, t = { name: providerNameEl.value, contact: providerContactEl.value };
+        if (Object.keys(t).some(k => b[k] !== t[k])) { Object.assign(b, t); scheduleSave(); }
+    }
+
+    const svgUri = x => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(x);
+
+    // Logo e gjeneruar: mburojë me valë sinjali TV dhe inicialet e biznesit
+    function genLogoSVG(name) {
+        const ini = escapeSafe((name.match(/[A-Za-z0-9ËÇëç]+/g) || ['TV']).map(w => w[0]).join('').slice(0, 2).toUpperCase());
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 3 90 17v31c0 24-16 40-40 49C26 88 10 72 10 48V17z" fill="#000"/><path d="M50 10 83 22v26c0 19-12 32-33 40C29 80 17 67 17 48V22z" fill="none" stroke="#fff" stroke-width="1.6"/><g fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"><path d="M37 38a18 18 0 0 1 26 0"/><path d="M42.5 44a10 10 0 0 1 15 0"/></g><circle cx="50" cy="50" r="2.6" fill="#fff"/><text x="50" y="76" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="24" letter-spacing="1" fill="#fff">${ini}</text></svg>`;
+    }
+
+    // Vula e gjeneruar: rreth i dyfishtë, emri në hark (textPath), "ZYRTARE" dhe viti
+    function genStampSVG(name) {
+        const n = escapeSafe(name.toUpperCase()), fs = Math.max(9, Math.min(19, 185 / (name.length * 0.72)));
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" font-family="Georgia,'Times New Roman',serif" fill="#000" opacity=".88"><circle cx="100" cy="100" r="95" fill="none" stroke="#000" stroke-width="4"/><circle cx="100" cy="100" r="87" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="100" cy="100" r="50" fill="none" stroke="#000" stroke-width="1.5"/><defs><path id="t" d="M34,100 A66,66 0 0 1 166,100"/><path id="b" d="M20,100 A80,80 0 0 0 180,100"/></defs><text font-size="${fs}" font-weight="700" letter-spacing="1.5" text-anchor="middle"><textPath href="#t" startOffset="50%">${n}</textPath></text><text font-size="17" font-weight="700" letter-spacing="3" text-anchor="middle"><textPath href="#b" startOffset="50%">• ${new Date().getFullYear()} •</textPath></text><text x="100" y="108" font-size="19" font-weight="700" letter-spacing="2" text-anchor="middle">ZYRTARE</text><path d="M62 90h76M62 120h76" stroke="#000" stroke-width="1.5"/></svg>`;
+    }
+
+    // Vizaton logon, vulën dhe emrin/pozicionin e nënshkruesit në faturë
+    function renderBrandAssets() {
+        const nm = providerNameEl.value.trim() || 'TV';
+        const set = (id, src) => { const e = $(id); if (e.getAttribute('src') !== src) e.src = src; };
+        set('p-logo', DB.brand.logo || svgUri(genLogoSVG(nm)));
+        set('p-stamp', DB.brand.stamp || svgUri(genStampSVG(nm)));
+        $('p-signer-name').textContent = 'Alb-Kanale';
+        $('p-sign-line').style.display = '';
+    }
+
+    // Ngarkon imazh (max 500KB) dhe e ruan si base64 brenda file-it të të dhënave
+    function bindUpload(inputId, clearId, key) {
+        $(inputId).addEventListener('change', e => {
+            const f = e.target.files[0]; e.target.value = '';
+            if (!f) return;
+            if (!/^image\//.test(f.type) || f.size > 512000) return toast('Imazhi duhet të jetë PNG/JPG deri në 500KB.', true);
+            const r = new FileReader();
+            r.onload = () => { DB.brand[key] = r.result; scheduleSave(); refreshPreview(); };
+            r.readAsDataURL(f);
+        });
+        $(clearId).addEventListener('click', () => { delete DB.brand[key]; scheduleSave(); refreshPreview(); });
+    }
+    bindUpload('logoFile', 'logoClear', 'logo'); bindUpload('stampFile', 'stampClear', 'stamp');
+
+    /* ================= PAKETAT (1 / 3 / 12 muaj / Custom) ================= */
+    // Vendos periudhën, emrin e paketës dhe çmimin; thekson butonin aktiv
+    function applyPackage(months, label, price, key) {
+        if (!issueDateEl.value) issueDateEl.value = getTodayISO();
+        expiryDateEl.value = addMonthsISO(issueDateEl.value, months);
+        packageDetailEl.value = label;
+        if (price) amountEl.value = price.toFixed(2);
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.pkg === key));
+        refreshPreview();
+    }
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.addEventListener('click', () => {
+        const k = btn.dataset.pkg;
+        if (k === '1') applyPackage(1, 'Paketa 1 Mujore', 15, k);
+        else if (k === '3') applyPackage(3, 'Paketa 3 Mujore', 40, k);
+        else if (k === '12') $('pkg-modal').classList.add('show');
+        else document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active')); // Custom: fusha manuale
+    }));
+    $('pkg-cancel').onclick = () => $('pkg-modal').classList.remove('show');
+    // Konfirmon paketën 12 mujore (Basic / Premium / Ultra Premium)
+    $('pkg-ok').onclick = () => {
+        const r = document.querySelector('input[name="tier"]:checked'), note = $('pkgNote').value.trim();
+        applyPackage(12, `Paketa 12 Mujore - ${r.value}`, +r.dataset.price, '12');
+        if (note) notesEl.value = notesEl.value.trim() ? notesEl.value.trim() + '\n' + note : note;
+        $('pkgNote').value = ''; $('pkg-modal').classList.remove('show'); refreshPreview();
+    };
+
+    /* ================= KARTELA E KLIENTIT ================= */
+    const debounce = (f, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), ms); }; };
+
+    // Normalizon telefonin: pa +, hapësira, 00, kodi 383 dhe 0 në fillim
+    function phoneKey(p) {
+        let d = String(p || '').replace(/\D/g, '').replace(/^00/, '');
+        if (d.startsWith('383') && d.length > 9) d = d.slice(3);
+        return d.replace(/^0+/, '');
+    }
+
+    // Faturat e një klienti (më e reja e para)
+    function clientInvoices(phone) {
+        const k = phoneKey(phone);
+        if (!k) return [];
+        return getInvoices().filter(i => phoneKey(i.clientPhone) === k)
+            .sort((a, b) => String(b.issueDate).localeCompare(String(a.issueDate)) || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    }
+
+    // ID unike e klientit: ripërdoret nga faturat e mëparshme me të njëjtin telefon
+    function resolveClientUid(phone) {
+        const f = clientInvoices(phone).find(i => i.clientUid);
+        return f ? f.clientUid : 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    // Shfaq kutinë e klientit ekzistues / të ri dhe (opsionale) plotëson emrin dhe MAC/ID
+    function updateClientInfo(autofill) {
+        const box = $('client-info'), key = phoneKey(clientPhoneEl.value);
+        box.style.display = 'none';
+        if (key.length < 3) return;
+        const list = clientInvoices(clientPhoneEl.value);
+        if (!list.length) {
+            if (key.length >= 6) { box.style.display = 'flex'; box.innerHTML = '<span>🆕 Klient i ri</span>'; }
+            return;
+        }
+        const last = list[0];
+        if (autofill) {
+            if (!clientNameEl.value.trim() && last.clientName) clientNameEl.value = last.clientName;
+            const idEmpty = !clientIdEl.value.trim() && !deviceKeyEl.value.trim() && !xtUserEl.value.trim() && !xtPassEl.value.trim() && !xtLineEl.value.trim();
+            if (idEmpty && (last.clientId || last.deviceKey || last.idType === 'xtream')) setIdFromRecord(last);
+            refreshPreview();
+        }
+        box.style.display = 'flex';
+        box.innerHTML = `<span>✓ Klient ekzistues — ${list.length} fatura gjithsej • Blerja e fundit: ${formatDateSq(last.issueDate)} • Skadon: ${formatDateSq(last.expiryDate)} • Statusi: ${escapeSafe(last.status)}</span><button type="button" class="btn btn-outline btn-xs" id="btn-history">Historiku i Klientit</button>`;
+        $('btn-history').onclick = () => openHistory(clientPhoneEl.value);
+    }
+    clientPhoneEl.addEventListener('input', debounce(() => updateClientInfo(true), 400));
+    clientPhoneEl.addEventListener('blur', () => updateClientInfo(true));
+
+    // Modali i historikut: të dhëna bazë, totalet dhe tabela e faturave
+    let histList = [];
+    function openHistory(phone) {
+        histList = clientInvoices(phone);
+        if (!histList.length) return;
+        const last = histList[0], oldest = histList[histList.length - 1];
+        const sum = st => histList.filter(i => i.status === st).reduce((a, i) => a + (parseFloat(i.amount) || 0), 0);
+        const rows = histList.map(i => `<tr><td>${escapeSafe(i.invoiceNumber)}</td><td>${formatDateSq(i.issueDate)}</td><td>${formatEuro(i.amount)}</td><td>${escapeSafe(i.status)}</td><td>${formatDateSq(i.expiryDate)}</td></tr>`).join('');
+        $('hist-body').innerHTML = `<p><b style="color:#f8fafc;">${escapeSafe(last.clientName || '—')}</b><br>Tel: ${escapeSafe(last.clientPhone)} • ${idLines(last).length ? idLines(last).map(([k, v]) => escapeSafe(k) + ' ' + escapeSafe(v)).join(' • ') : 'MAC: —'}<br>Regjistruar më: ${formatDateSq(oldest.issueDate)}</p>
+            <div class="hist-sum"><div>Totali i paguar<strong style="color:#34d399;">${formatEuro(sum('PAGUAR'))}</strong></div><div>Totali i borxhit<strong style="color:#f87171;">${formatEuro(sum('PAPAGUAR'))}</strong></div></div>
+            <table class="hist-table"><tr><th>Nr.</th><th>Data</th><th>Shuma</th><th>Statusi</th><th>Skadimi</th></tr>${rows}</table>`;
+        $('hist-modal').classList.add('show');
+    }
+    $('hist-close').onclick = () => $('hist-modal').classList.remove('show');
+    $('hist-renew').onclick = () => { $('hist-modal').classList.remove('show'); renewInvoice(histList[0]); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+    /* ================= DUBLIKAT FATURE ================= */
+    // Kopjon faturën me numër të ri, datë të sotme (e njëjta kohëzgjatje) dhe status PAPAGUAR
+    function duplicateInvoice(inv) {
+        const span = Math.max(0, Math.round((new Date(inv.expiryDate + 'T12:00:00') - new Date(inv.issueDate + 'T12:00:00')) / 86400000));
+        const d = new Date(getTodayISO() + 'T12:00:00'); d.setDate(d.getDate() + span);
+        saveInvoices([{ ...inv, invoiceNumber: generateRandomInvoiceNumber(), issueDate: getTodayISO(), expiryDate: toISO(d), status: 'PAPAGUAR', updatedAt: new Date().toISOString() }, ...getInvoices()]);
+        renderArchiveAndStats(); toast('Dublikati u krijua (PAPAGUAR).');
+    }
+
+    /* ================= KËRKIMI I ZGJERUAR ================= */
+    // Ndan kërkimin në filtra (status/skadon/shuma/data) dhe tekst të lirë
+    function parseQuery(q) {
+        const f = [], w = [];
+        q.trim().toLowerCase().split(/\s+/).filter(Boolean).forEach(t => { const m = t.match(/^(status|skadon|shuma|data):(.+)$/); if (m) f.push([m[1], m[2]]); else w.push(t); });
+        return { f, w };
+    }
+    // Kontrollon nëse fatura i plotëson të gjitha kushtet
+    function matchInvoice(inv, p) {
+        const hay = [inv.invoiceNumber, inv.clientName, inv.clientId, inv.deviceKey, inv.xtPass, inv.xtLine, inv.clientPhone].join(' ').toLowerCase();
+        if (!p.w.every(x => hay.includes(x))) return false;
+        return p.f.every(([k, v]) => {
+            if (k === 'status') return String(inv.status).toLowerCase() === v;
+            if (k === 'data') return String(inv.issueDate).startsWith(v);
+            if (k === 'skadon') {
+                if (v.includes('-')) return String(inv.expiryDate).startsWith(v);
+                const d = getDaysDifference(inv.expiryDate); return d !== null && d >= 0 && d <= (parseInt(v, 10) || 0);
+            }
+            const m = v.match(/^(>=|<=|>|<|=)?(\d+(?:\.\d+)?)$/); if (!m) return false;
+            const a = parseFloat(inv.amount) || 0, n = parseFloat(m[2]);
+            return { '>': a > n, '<': a < n, '>=': a >= n, '<=': a <= n, '=': a === n }[m[1] || '='];
+        });
+    }
+
+    /* ================= NDARJA E PDF (WhatsApp / Web Share API) ================= */
+    // Teksti i mesazhit me të njëjtat info si më parë
+    function buildInvoiceMessage(rec) {
+        const clientLine = rec.clientName ? `👤 *Klienti:* ${rec.clientName}\n` : '';
+        return `📄 *FATURË ABONIMI — ${rec.providerName || 'TV'}*
+━━━━━━━━━━━━━━━━━━
+🔢 *Nr. Faturës:* ${rec.invoiceNumber}
+${clientLine}📱 *Tel:* ${rec.clientPhone}
+${idLines(rec).map(([k, v]) => `🆔 *${k}* ${v}\n`).join('')}📺 *Shërbimi:* ${rec.serviceTitle} (${rec.packageDetail})
+📅 *Data e lëshimit:* ${formatDateSq(rec.issueDate)}
+⏳ *Skadon më:* ${formatDateSq(rec.expiryDate)}
+💶 *Shuma:* ${formatEuro(rec.amount)}
+📌 *Statusi:* *${rec.status}*
+━━━━━━━━━━━━━━━━━━
+Ju falënderojmë për besimin!`;
+    }
+
+    // Shkarkon një Blob/File si skedar
+    function downloadBlob(blob, name) {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    }
+
+    // Gjeneron PDF në memorie dhe e ndan me menunë native; desktop: WhatsApp Web + shkarkim
+    let shareCache = null;
+    async function shareInvoice(viaWA) {
+        if (!validateInputs()) return;
+        const rec = saveCurrentInvoice(), text = buildInvoiceMessage(rec);
+        let file = shareCache && shareCache.no === rec.invoiceNumber ? shareCache.file : null;
+        shareCache = null;
+        if (!file) file = await generatePDFFile(rec.invoiceNumber, rec.clientName || rec.clientPhone, 'blob');
+        if (!file) return;
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try { await navigator.share({ files: [file], title: `Faturë ${rec.invoiceNumber}`, text }); }
+            catch (e) {
+                if (e.name === 'NotAllowedError') { shareCache = { no: rec.invoiceNumber, file }; toast('PDF është gati — shtypni përsëri për ta ndarë.'); }
+                else if (e.name !== 'AbortError') toast('Ndarja dështoi.', true);
+            }
+            return;
+        }
+        downloadBlob(file, file.name);
+        if (viaWA) { openWhatsApp(rec.clientPhone, text); toast('PDF u shkarkua. Ngjitni manualisht në bisedë.'); }
+        else toast('Ndarja nuk mbështetet këtu — PDF u shkarkua.');
+    }
+    $('btn-whatsapp').addEventListener('click', () => shareInvoice(true));
+    $('btn-share').addEventListener('click', () => shareInvoice(false));
+
+    /* ================= BACKUP & RESTORE ================= */
+    // Backup manual me timestamp
+    $('btn-backup-now').onclick = () => { const d = new Date(); downloadBlob(new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' }), `backup_${toISO(d)}_${pad(d.getHours())}-${pad(d.getMinutes())}.json`); };
+    $('btn-restore').onclick = () => $('file-restore').click();
+    // Rikthen të gjitha të dhënat nga një file JSON
+    $('file-restore').onchange = e => {
+        const f = e.target.files[0]; e.target.value = '';
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => {
+            try {
+                const d = normalizeDB(JSON.parse(r.result));
+                if (!confirm(`Të zëvendësohen të gjitha të dhënat me ${d.invoices.length} fatura nga ky file?`)) return;
+                DB = d; scheduleSave(); bootApp(); toast('Të dhënat u rikthyen.');
+            } catch (err) { toast('File i pavlefshëm.', true); }
+        };
+        r.readAsText(f);
+    };
+
+    /* ================= SINKRONIZIM PC <-> iPHONE (Dropbox) ================= */
+    // Bashkon një DB tjetër me atë aktuale: fiton versioni më i ri (updatedAt); fshirjet respektohen
+    function mergeDB(incoming) {
+        const inc = normalizeDB(incoming);
+        const map = new Map(DB.invoices.map(x => [x.invoiceNumber, x]));
+        let added = 0, updated = 0;
+        inc.invoices.forEach(x => {
+            if (!x || !x.invoiceNumber) return;
+            const cur = map.get(x.invoiceNumber);
+            if (!cur) { map.set(x.invoiceNumber, x); added++; }
+            else if (String(x.updatedAt || '') > String(cur.updatedAt || '')) { map.set(x.invoiceNumber, x); updated++; }
+        });
+        const tomb = Object.assign({}, DB.deleted || {}, inc.deleted || {});
+        let removed = 0;
+        Object.keys(tomb).forEach(no => {
+            const cur = map.get(no);
+            if (cur && String(cur.updatedAt || '') <= tomb[no]) { map.delete(no); removed++; }
+        });
+        Object.keys(inc.brand).forEach(k => { if (!(k in DB.brand)) DB.brand[k] = inc.brand[k]; });
+        DB.deleted = tomb;
+        DB.invoices = Array.from(map.values()).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+        scheduleSave(); renderArchiveAndStats(); updateClientInfo(false);
+        return { added, updated, removed };
+    }
+    function syncToast(r) { toast(`Sinkronizuar: ${r.added} të reja, ${r.updated} të përditësuara${r.removed ? ', ' + r.removed + ' të fshira' : ''}.`); }
+
+    // Dërgo: ndan file-in JSON përmes Share (iPhone -> «Ruaj në Dropbox»), ose e shkarkon
+    $('btn-sync-send').onclick = async () => {
+        if (dbxAuth()) return cloudSync(true);
+        const json = JSON.stringify(DB, null, 2);
+        // PC me dosje të zgjedhur: shkruan direkt file-in (Dropbox e sinkronizon vetë)
+        if (FSA && dirHandle) {
+            try { await writeFile(FILE_NAME, json); toast('U ruajt në dosjen e të dhënave. Dropbox do ta sinkronizojë.'); return; }
+            catch (e) { /* vazhdon me shkarkim */ }
+        }
+        // Telefon: menuja e ndarjes (Ruaj në Dropbox)
+        const isTouch = navigator.maxTouchPoints > 0 && /iPhone|iPad|Android/i.test(navigator.userAgent);
+        if (isTouch && navigator.canShare) {
+            try {
+                const file = new File([json], FILE_NAME, { type: 'application/json' });
+                if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: FILE_NAME });
+                    toast('Zgjidh Dropbox dhe ruaje (zëvendëso file-in ekzistues).');
+                    return;
+                }
+            } catch (e) { if (e.name === 'AbortError') return; }
+        }
+        // Rezervë: shkarkim i zakonshëm
+        downloadBlob(new Blob([json], { type: 'application/json' }), FILE_NAME);
+        toast('File-i u shkarkua. Vendose në dosjen e Dropbox-it (zëvendëso ekzistuesin).');
+    };
+    // Merr: në PC (me dosje të zgjedhur) lexon direkt file-in; përndryshe hap zgjedhësin e file-ave (iPhone -> Dropbox)
+    $('btn-sync-get').onclick = async () => {
+        if (dbxAuth()) return cloudSync(true);
+        if (FSA && dirHandle) {
+            try {
+                const f = await (await dirHandle.getFileHandle(FILE_NAME)).getFile();
+                syncToast(mergeDB(JSON.parse(await f.text())));
+            } catch (e) { toast('Nuk u lexua file-i nga dosja.', true); }
+        } else $('file-sync').click();
+    };
+    $('file-sync').onchange = e => {
+        const f = e.target.files[0]; e.target.value = '';
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => { try { syncToast(mergeDB(JSON.parse(r.result))); } catch (err) { toast('File i pavlefshëm.', true); } };
+        r.readAsText(f);
+    };
+
+    /* ================= SINKRONIZIM AUTOMATIK ME DROPBOX (API) ================= */
+    // Çdo pajisje lidhet një herë. Tokenat ruhen vetëm lokalisht (jo në JSON). Skedari në Dropbox: /te_dhenat_faturimit.json (në dosjen e aplikacionit).
+    const DBX_PATH = '/' + FILE_NAME, DBX_LS = 'dbx_auth_v1', DBX_PK = 'dbx_pkce_v1';
+    let dbxSyncing = false, dbxTimer = null, dbxAgain = false, dbxInited = false;
+
+    function dbxAuth() { try { return JSON.parse(lsGet(DBX_LS)); } catch (e) { return null; } }
+    function dbxSetStatus(t, err) { const e = $('dbx-status'); if (e) { e.textContent = t; e.style.color = err ? '#f87171' : ''; } }
+    function dbxRender() {
+        const a = dbxAuth();
+        $('dbx-setup').style.display = a ? 'none' : '';
+        $('dbx-actions').style.display = a ? 'flex' : 'none';
+        if (!a) dbxSetStatus('Jo i lidhur. Krijo një app në dropbox.com/developers (shih udhëzimet), ngjit App key dhe lidhu.');
+    }
+    const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    async function pkcePrepare() {
+        const v = b64url(crypto.getRandomValues(new Uint8Array(48)));
+        const c = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v)));
+        lsSet(DBX_PK, JSON.stringify({ v, c }));
+    }
+    async function dbxTokenReq(params) {
+        const r = await fetch('https://api.dropboxapi.com/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error_description || j.error || ('HTTP ' + r.status));
+        return j;
+    }
+    async function dbxToken() {
+        const a = dbxAuth(); if (!a) throw new Error('Jo i lidhur');
+        if (a.access && Date.now() < a.exp - 60000) return a.access;
+        const j = await dbxTokenReq({ grant_type: 'refresh_token', refresh_token: a.refresh, client_id: a.key });
+        a.access = j.access_token; a.exp = Date.now() + (j.expires_in || 14400) * 1000; lsSet(DBX_LS, JSON.stringify(a));
+        return a.access;
+    }
+    $('dbx-key').value = lsGet('dbx_key') || '';
+    $('dbx-open').onclick = () => {
+        const key = $('dbx-key').value.trim();
+        if (!key) return toast('Shkruaj App key-n e Dropbox-it.', true);
+        lsSet('dbx_key', key);
+        let pk = null; try { pk = JSON.parse(lsGet(DBX_PK)); } catch (e) {}
+        if (!pk) return toast('Provo përsëri pas një sekonde.', true);
+        window.open('https://www.dropbox.com/oauth2/authorize?' + new URLSearchParams({ client_id: key, response_type: 'code', code_challenge: pk.c, code_challenge_method: 'S256', token_access_type: 'offline' }), '_blank');
+    };
+    $('dbx-confirm').onclick = async () => {
+        const key = $('dbx-key').value.trim(), code = $('dbx-code').value.trim();
+        let pk = null; try { pk = JSON.parse(lsGet(DBX_PK)); } catch (e) {}
+        if (!key || !code || !pk) return toast('Plotëso App key dhe kodin.', true);
+        try {
+            const j = await dbxTokenReq({ grant_type: 'authorization_code', code, client_id: key, code_verifier: pk.v });
+            lsSet(DBX_LS, JSON.stringify({ key, refresh: j.refresh_token, access: j.access_token, exp: Date.now() + (j.expires_in || 14400) * 1000 }));
+            lsSet(DBX_PK, ''); pkcePrepare().catch(() => {});
+            $('dbx-code').value = ''; dbxRender(); toast('Dropbox u lidh.'); cloudSync(true);
+        } catch (e) { toast('Lidhja dështoi: ' + e.message, true); }
+    };
+    $('dbx-off').onclick = () => { lsSet(DBX_LS, ''); dbxRender(); toast('Dropbox u shkëput nga kjo pajisje.'); };
+    $('dbx-now').onclick = () => cloudSync(true);
+
+    async function dbxDownload(tok) {
+        const r = await fetch('https://content.dropboxapi.com/2/files/download', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Dropbox-API-Arg': JSON.stringify({ path: DBX_PATH }) } });
+        if (r.status === 409) return { text: null, rev: null };            // file ende nuk ekziston
+        if (!r.ok) throw new Error('Shkarkimi HTTP ' + r.status);
+        const meta = JSON.parse(r.headers.get('dropbox-api-result') || '{}');
+        return { text: await r.text(), rev: meta.rev || null };
+    }
+    async function dbxUpload(tok, text, rev) {
+        const mode = rev ? { '.tag': 'update', update: rev } : 'add';
+        const r = await fetch('https://content.dropboxapi.com/2/files/upload', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/octet-stream', 'Dropbox-API-Arg': JSON.stringify({ path: DBX_PATH, mode, autorename: false, mute: true }) }, body: text });
+        if (r.status === 409) return false;                                  // dikush tjetër e ndryshoi në mes
+        if (!r.ok) throw new Error('Ngarkimi HTTP ' + r.status);
+        return true;
+    }
+
+    // Shkarko -> bashko -> ngarko (me kontroll të versionit; nëse ka konflikt, përsërit)
+    async function cloudSync(manual) {
+        if (!dbxAuth() || !dbReady) return;
+        if (dbxSyncing) { dbxAgain = true; return; }
+        dbxSyncing = true; dbxSetStatus('☁️ Duke sinkronizuar...');
+        try {
+            const tok = await dbxToken();
+            for (let i = 0; i < 4; i++) {
+                const remote = await dbxDownload(tok);
+                let r = { added: 0, updated: 0, removed: 0 };
+                if (remote.text) r = mergeDB(JSON.parse(remote.text));
+                const out = JSON.stringify(DB, null, 2);
+                if (remote.text && out === remote.text) { dbxSetStatus('☁️ Sinkronizuar ' + new Date().toLocaleTimeString('sq')); if (manual) syncToast(r); break; }
+                if (await dbxUpload(tok, out, remote.rev)) {
+                    dbxSetStatus('☁️ Sinkronizuar ' + new Date().toLocaleTimeString('sq'));
+                    if (manual || r.added || r.updated || r.removed) syncToast(r);
+                    break;
+                }
+                if (i === 3) throw new Error('Konflikt i përsëritur, provo sërish.');
+            }
+        } catch (e) { console.error(e); dbxSetStatus('⚠️ Sinkronizimi dështoi: ' + e.message, true); if (manual) toast('Sinkronizimi dështoi.', true); }
+        dbxSyncing = false;
+        if (dbxAgain) { dbxAgain = false; scheduleCloud(); }
+    }
+    // Pas çdo ndryshimi lokal (jo gjatë sinkronizimit), me vonesë 3 sekonda
+    function scheduleCloud() {
+        if (dbxSyncing || !dbxAuth()) return;
+        clearTimeout(dbxTimer); dbxTimer = setTimeout(() => cloudSync(false), 3000);
+    }
+    function cloudInit() {
+        if (dbxInited) return; dbxInited = true;
+        dbxRender(); pkcePrepare().catch(() => {});
+        cloudSync(false);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cloudSync(false); });
+        window.addEventListener('online', () => cloudSync(false));
+    }
+
+    window.addEventListener('beforeunload', e => { if (saveTimer) { e.preventDefault(); e.returnValue = ''; } });
+
+    window.addEventListener('DOMContentLoaded', initStorage);
+</script>
+</body>
+</html>
